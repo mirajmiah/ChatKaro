@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html, body {
+    height: 100%;
+    overflow-x: hidden;
+  }
+  #root {
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}
+
+@layer utilities {
+  .auth-page-transition {
+    animation: auth-page-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .auth-page-transition > section:first-child {
+    animation: auth-panel-enter-left 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .auth-page-transition > section + div {
+    animation: auth-panel-enter-right 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes auth-page-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes auth-panel-enter-left {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes auth-panel-enter-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-page-transition,
+    .auth-page-transition > section:first-child,
+    .auth-page-transition > section + div {
+      animation: none;
+    }
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-hidden {
+    scrollbar-width: none;
+  }
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+  .chat-composer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}

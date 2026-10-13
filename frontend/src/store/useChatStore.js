@@ -1,0 +1,302 @@
+import { create } from 'zustand';
+import api from '../lib/axios.js';
+import toast from 'react-hot-toast';
+import { useAuthStore } from './useAuthStore.js';
+
+export const useChatStore = create((set, get) => ({
+  users: [],
+  contactRequests: [],
+  messageRequests: [],
+  selectedUser: null,
+  messages: [],
+  isLoadingUsers: false,
+  isLoadingMessages: false,
+
+fetchUsers: async () => {
+  set({ isLoadingUsers: true });
+  try {
+    const res = await api.get('/messages/users');
+
+    const authUser = useAuthStore.getState().authUser;
+    const currentUserId = String(authUser?._id || '');
+
+      const users = Array.isArray(res.data)
+      ? res.data.filter((user) => String(user._id) !== currentUserId)
+      : [];
+
+    set((state) => {
+      const selectedStillMutual = users.some((user) => user._id === state.selectedUser?._id);
+      return {
+        users,
+        selectedUser: selectedStillMutual ? state.selectedUser : null,
+        messages: selectedStillMutual ? state.messages : [],
+      };
+    });
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Failed to load users');
+  } finally {
+    set({ isLoadingUsers: false });
+  }
+},
+
+  searchContact: async (email) => {
+    try {
+      const res = await api.get('/messages/contacts/search', { params: { email } });
+      return res.data.contact;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to search for contact');
+      throw err;
+    }
+  },
+
+  fetchContactRequests: async () => {
+    try {
+      const res = await api.get('/messages/contacts/requests');
+      set({ contactRequests: Array.isArray(res.data) ? res.data : [] });
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load contact requests');
+    }
+  },
+
+  fetchMessageRequests: async () => {
+    try {
+      const res = await api.get('/messages/contacts/message-requests');
+      set({ messageRequests: Array.isArray(res.data) ? res.data : [] });
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load message requests');
+    }
+  },
+
+  fetchMessageRequestMessages: async (senderId) => {
+    try {
+      const res = await api.get(`/messages/contacts/message-requests/${senderId}/messages`);
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load requested messages');
+      throw err;
+    }
+  },
+
+  sendContactRequest: async (email) => {
+    try {
+      const res = await api.post('/messages/contacts', { email });
+      toast.success(res.data.message);
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send contact request');
+      throw err;
+    }
+  },
+
+  respondToContactRequest: async (requestId, accept) => {
+    try {
+      const response = accept
+        ? await api.patch(`/messages/contacts/requests/${requestId}/accept`)
+        : await api.delete(`/messages/contacts/requests/${requestId}`);
+      set((state) => ({
+        contactRequests: state.contactRequests.filter((request) => request._id !== requestId),
+      }));
+      if (accept) await get().fetchUsers();
+      toast.success(response.data.message);
+      return response.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to respond to contact request');
+      throw err;
+    }
+  },
+
+  respondToMessageRequest: async (senderId, accept) => {
+    try {
+      const response = accept
+        ? await api.patch(`/messages/contacts/message-requests/${senderId}`)
+        : await api.delete(`/messages/contacts/message-requests/${senderId}`);
+      set((state) => ({
+        messageRequests: state.messageRequests.filter(
+          (request) => String(request.sender._id) !== String(senderId)
+        ),
+      }));
+      if (accept) await get().fetchUsers();
+      toast.success(response.data.message);
+      return response.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to respond to message request');
+      throw err;
+    }
+  },
+
+  removeContact: async (userId) => {
+    try {
+      const res = await api.delete(`/messages/contacts/${userId}`);
+      set((state) => ({
+        users: state.users.filter((user) => user._id !== userId),
+        selectedUser: state.selectedUser?._id === userId ? null : state.selectedUser,
+        messages: state.selectedUser?._id === userId ? [] : state.messages,
+      }));
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove contact');
+      throw err;
+    }
+  },
+
+  selectUser: (user) => {
+    set({ selectedUser: user, messages: [] });
+  },
+
+  fetchMessages: async (userId) => {
+    set({ isLoadingMessages: true });
+    try {
+      const res = await api.get(`/messages/${userId}`);
+      set({ messages: Array.isArray(res.data) ? res.data : [] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load messages');
+    } finally {
+      set({ isLoadingMessages: false });
+    }
+  },
+
+  deleteChat: async (userId) => {
+    try {
+      const res = await api.delete(`/messages/${userId}`);
+      if (String(get().selectedUser?._id) === String(userId)) {
+        set({ messages: [] });
+      }
+      toast.success(res.data.message);
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete chat history');
+      throw err;
+    }
+  },
+
+  sendMessage: async (receiverId, data) => {
+    try {
+      const res = await api.post(`/messages/send/${receiverId}`, data);
+      set((state) => ({ messages: [...state.messages, res.data] }));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send message');
+      throw err;
+    }
+  },
+
+  editMessage: async (messageId, text) => {
+    try {
+      const res = await api.put(`/messages/${messageId}`, { text });
+      set((state) => ({
+        messages: state.messages.map((message) =>
+          message._id === messageId ? res.data : message
+        ),
+      }));
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to edit message');
+      throw err;
+    }
+  },
+
+  deleteMessage: async (messageId, scope = 'everyone') => {
+    try {
+      const res = await api.delete(`/messages/${messageId}?scope=${scope}`);
+      set((state) => ({
+        messages: scope === 'me'
+          ? state.messages.filter((message) => message._id !== messageId)
+          : state.messages.map((message) => message._id === messageId ? res.data : message),
+      }));
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete message');
+      throw err;
+    }
+  },
+
+  toggleStarMessage: async (messageId, starred) => {
+    try {
+      const res = await api.patch(`/messages/${messageId}/star`, { starred });
+      set((state) => ({
+        messages: state.messages.map((message) =>
+          message._id === messageId ? res.data : message
+        ),
+      }));
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update starred message');
+      throw err;
+    }
+  },
+
+  togglePinMessage: async (messageId, pinned, durationDays) => {
+    try {
+      const res = await api.patch(`/messages/${messageId}/pin`, { pinned, durationDays });
+      set((state) => ({
+        messages: state.messages.map((message) =>
+          message._id === messageId ? res.data : message
+        ),
+      }));
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update pinned message');
+      throw err;
+    }
+  },
+
+  forwardMessage: async (messageId, receiverId) => {
+    try {
+      const res = await api.post(`/messages/${messageId}/forward`, { receiverId });
+      if (String(get().selectedUser?._id) === String(receiverId)) {
+        set((state) => ({ messages: [...state.messages, res.data] }));
+      }
+      toast.success('Message forwarded');
+      return res.data;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to forward message');
+      throw err;
+    }
+  },
+
+  addMessage: (message) => {
+    set((state) => {
+      const exists = state.messages.some((m) => m._id === message._id);
+      if (exists) return {};
+      return { messages: [...state.messages, message] };
+    });
+  },
+
+  subscribeToMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+    socket.off('newMessage');
+    socket.on('newMessage', (message) => {
+      const { selectedUser } = get();
+      if (!selectedUser) return;
+      if (message.senderId === selectedUser._id || message.receiverId === selectedUser._id) {
+        get().addMessage(message);
+      }
+    });
+    socket.on('messageEdited', (message) => {
+      set((state) => ({
+        messages: state.messages.map((item) => item._id === message._id ? message : item),
+      }));
+    });
+    socket.on('messageDeleted', (message) => {
+      set((state) => ({
+        messages: state.messages.map((item) => item._id === message._id ? message : item),
+      }));
+    });
+    socket.on('messagePinned', (message) => {
+      set((state) => ({
+        messages: state.messages.map((item) => item._id === message._id ? message : item),
+      }));
+    });
+  },
+
+  unsubscribeFromMessages: () => {
+    const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+    socket.off('newMessage');
+    socket.off('messageEdited');
+    socket.off('messageDeleted');
+    socket.off('messagePinned');
+  },
+}));
