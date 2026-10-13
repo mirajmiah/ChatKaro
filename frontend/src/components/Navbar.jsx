@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Zap, User, Settings, LogOut } from 'lucide-react';
+import { User, Settings, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
@@ -22,9 +22,11 @@ export default function Navbar() {
           className="flex items-center gap-2 group"
           aria-label={t('ChatKaro Home')}
         >
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-            <Zap size={18} className="text-primary-content fill-primary-content" />
-          </div>
+          <img
+            src="/chatkaro-logo.png"
+            alt=""
+            className="w-8 h-8 object-contain group-hover:scale-105 transition-transform"
+          />
           <span className="font-bold text-lg tracking-tight hidden sm:inline">
             ChatKaro
           </span>
