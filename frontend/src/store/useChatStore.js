@@ -235,7 +235,7 @@ fetchUsers: async () => {
 
   sendMessage: async (receiverId, data) => {
     try {
-      const res = await api.post(`/messages/send/${receiverId}`, data);
+      const res = await api.post(`/messages/send/${receiverId}`, data, { timeout: 120000 });
       get().addMessage(res.data);
     } catch (err) {
       toast.error(translateCurrent(err.response?.data?.message || 'Failed to send message'));

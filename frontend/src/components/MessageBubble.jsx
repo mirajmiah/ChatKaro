@@ -6,7 +6,6 @@ import {
   Check,
   CheckSquare,
   Copy,
-  FileText,
   Forward,
   Info,
   Pencil,
@@ -20,6 +19,41 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
+import DocumentLink from './DocumentLink.jsx';
+
+const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+|(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#][^\s<]*)?/gi;
+
+function renderLinkedText(text) {
+  const parts = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(URL_PATTERN)) {
+    const rawUrl = match[0];
+    const url = rawUrl.replace(/[.,!?;:)}\]]+$/, '');
+    if (!url) continue;
+
+    const start = match.index;
+    const end = start + url.length;
+    if (start > lastIndex) parts.push(text.slice(lastIndex, start));
+    parts.push(
+      <a
+        key={`${start}-${url}`}
+        href={/^https?:\/\//i.test(url) ? url : `https://${url}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => event.stopPropagation()}
+        className="underline decoration-current underline-offset-2"
+      >
+        {url}
+      </a>
+    );
+    if (end < start + rawUrl.length) parts.push(rawUrl.slice(url.length));
+    lastIndex = start + rawUrl.length;
+  }
+
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
 
 function InitialsAvatar({ name, size = 'w-8 h-8' }) {
   const initials = name
@@ -338,7 +372,7 @@ export default function MessageBubble({
             <button disabled={isBusy} onClick={() => setIsEditing(false)} className="btn btn-ghost btn-xs btn-square" aria-label={t('Cancel edit')}><X size={14} /></button>
           </div>
         ) : (
-          message.text && <p className="leading-relaxed whitespace-pre-wrap">{message.text}{message.editedAt && <span className="ml-1 text-xs opacity-60">{t('(edited)')}</span>}</p>
+          message.text && <p className="leading-relaxed whitespace-pre-wrap">{renderLinkedText(message.text)}{message.editedAt && <span className="ml-1 text-xs opacity-60">{t('(edited)')}</span>}</p>
         )}
 
         {/* Image */}
@@ -392,16 +426,11 @@ export default function MessageBubble({
           />
         )}
         {!message.deletedAt && message.document && (
-          <a
-            href={message.document}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(event) => event.stopPropagation()}
-            className="mt-2 flex max-w-[280px] items-center gap-2 rounded-lg border border-base-content/20 bg-base-100/20 p-3"
-          >
-            <FileText size={20} className="shrink-0" />
-            <span className="truncate text-sm">{message.documentName}</span>
-          </a>
+          <DocumentLink
+            messageId={message._id}
+            documentName={message.documentName}
+            className="mt-2 max-w-[280px] rounded-lg border border-base-content/20 bg-base-100/20 p-2"
+          />
         )}
       </div>
 

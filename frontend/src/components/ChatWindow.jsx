@@ -154,7 +154,7 @@ export default function ChatWindow() {
   const selectedCount = selectedMessageIds.length;
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <ChatHeader messages={messages} onJumpToMessage={jumpToMessage} />
       {selectedCount > 0 && (
         <div className="flex shrink-0 items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-2">

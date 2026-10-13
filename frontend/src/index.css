@@ -89,17 +89,31 @@
   }
 
   .app-chat-layout {
-    height: calc(100dvh - 3.5rem - env(safe-area-inset-top));
+    min-height: 0;
+    flex: 1 1 0%;
+  }
+
+  .app-authenticated-layout {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .app-authenticated-layout > .app-navbar {
+    flex-shrink: 0;
+  }
+
+  .app-authenticated-layout > .app-chat-layout {
+    min-height: 0;
+    flex: 1 1 0%;
+    height: auto;
   }
 
   @media (min-width: 768px) {
     .app-navbar {
       height: calc(4rem + env(safe-area-inset-top));
       min-height: calc(4rem + env(safe-area-inset-top));
-    }
-
-    .app-chat-layout {
-      height: calc(100dvh - 4rem - env(safe-area-inset-top));
     }
   }
 

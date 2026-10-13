@@ -3,12 +3,14 @@ import User from '../models/user.model.js';
 import ContactRequest from '../models/contactRequest.model.js';
 import mongoose from 'mongoose';
 import { randomUUID } from 'crypto';
+import { Readable } from 'node:stream';
 import cloudinary from '../lib/cloudinary.js';
 import { emitToUser } from '../lib/socket.js';
 
-// ~5 MB base64 limit (base64 adds ~37% overhead)
-const MAX_ATTACHMENT_BASE64_LENGTH = Math.ceil(5 * 1024 * 1024 * 1.37);
-const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_VIDEO_SIZE = 5 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_VIDEO_BASE64_LENGTH = Math.ceil(MAX_IMAGE_VIDEO_SIZE * 4 / 3) + 1024;
+const MAX_DOCUMENT_BASE64_LENGTH = Math.ceil(MAX_DOCUMENT_SIZE * 4 / 3) + 1024;
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const DELETE_WINDOW_MS = 4 * 60 * 60 * 1000;
 const REPLY_PREVIEW_FIELDS = 'text image video document documentName senderId deletedAt';
@@ -40,7 +42,7 @@ const uploadRawDocument = (data, documentName) => {
   if (!dataUrl) throw new AttachmentValidationError('Document data is invalid.');
   const buffer = Buffer.from(dataUrl[2], 'base64');
   if (!buffer.length || buffer.length > MAX_DOCUMENT_SIZE) {
-    throw new AttachmentValidationError('Attachment exceeds 5 MB limit.');
+    throw new AttachmentValidationError('Documents must be 10 MB or smaller.');
   }
   if (extension === 'pdf' && (
     dataUrl[1].toLowerCase() !== 'application/pdf' ||
@@ -556,6 +558,75 @@ export const getMessages = async (req, res) => {
   }
 };
 
+export const getMessageDocument = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    if (!mongoose.isValidObjectId(messageId)) {
+      return res.status(400).json({ message: 'Invalid document request.' });
+    }
+
+    const message = await Message.findOne({
+      _id: messageId,
+      $or: [
+        { senderId: req.user._id },
+        { receiverId: req.user._id },
+      ],
+      deletedAt: { $exists: false },
+      deletedFor: { $ne: req.user._id },
+    }).select('document documentName');
+    if (!message?.document || !message.documentName) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    const documentUrl = new URL(message.document);
+    if (documentUrl.protocol !== 'https:' || documentUrl.hostname !== 'res.cloudinary.com') {
+      console.error('getMessageDocument error: unexpected document host.');
+      return res.status(502).json({ message: 'Unable to retrieve this document.' });
+    }
+
+    const remoteResponse = await fetch(documentUrl, { redirect: 'error' });
+    if (!remoteResponse.ok || !remoteResponse.body) {
+      console.error(`getMessageDocument error: document host returned ${remoteResponse.status}.`);
+      return res.status(502).json({ message: 'Unable to retrieve this document.' });
+    }
+
+    const fileName = message.documentName.replace(/[\\/:*?"<>|\r\n]/g, '_') || 'attachment';
+    const asciiFileName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    const mimeTypes = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      txt: 'text/plain',
+      csv: 'text/csv',
+      zip: 'application/zip',
+    };
+    const disposition = extension === 'pdf' ? 'inline' : 'attachment';
+    res.set({
+      'Content-Type': mimeTypes[extension] || 'application/octet-stream',
+      'Content-Disposition': `${disposition}; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    if (remoteResponse.headers.has('content-length')) {
+      res.set('Content-Length', remoteResponse.headers.get('content-length'));
+    }
+    Readable.fromWeb(remoteResponse.body)
+      .on('error', (error) => {
+        console.error('getMessageDocument stream error:', error.message);
+        res.destroy(error);
+      })
+      .pipe(res);
+  } catch (error) {
+    console.error('getMessageDocument error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
 export const markMessagesRead = async (req, res) => {
   try {
     const myId = req.user._id;
@@ -662,8 +733,15 @@ export const sendMessage = async (req, res) => {
     let documentUrl;
     if (image || video || document) {
       const media = image || video || document;
-      if (typeof media !== 'string' || media.length > MAX_ATTACHMENT_BASE64_LENGTH) {
-        return res.status(400).json({ message: 'Attachment exceeds 5 MB limit.' });
+      const maxBase64Length = document
+        ? MAX_DOCUMENT_BASE64_LENGTH
+        : MAX_IMAGE_VIDEO_BASE64_LENGTH;
+      if (typeof media !== 'string' || media.length > maxBase64Length) {
+        return res.status(400).json({
+          message: document
+            ? 'Documents must be 10 MB or smaller.'
+            : 'Images and videos must be 5 MB or smaller.',
+        });
       }
 
       const uploadResult = document

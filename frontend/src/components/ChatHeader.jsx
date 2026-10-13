@@ -27,7 +27,7 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
   const isOnline = onlineUsers.includes(selectedUser._id);
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-base-300 bg-base-200 shrink-0">
+    <div className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-200 px-4 py-3">
       {/* Back button — mobile only */}
       <button
         onClick={() => selectUser(null)}

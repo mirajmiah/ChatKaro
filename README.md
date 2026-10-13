@@ -287,7 +287,8 @@ updatedAt  Date      auto
 - CORS restricted to configured FRONTEND_URL
 - Auth routes rate-limited (15 req / 15 min per IP)
 - Message length capped at 2000 characters
-- Image uploads: max 5MB client + server side
+- Image/video uploads: max 5 MB client + server side
+- Document uploads: max 10 MB client + server side; PDFs can be previewed and documents downloaded through authenticated links
 - Passwords excluded from all API responses
 - Signup and password-reset OTPs are hashed and expire after 10 minutes
 - Password resets invalidate existing JWT sessions

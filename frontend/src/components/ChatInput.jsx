@@ -5,7 +5,8 @@ import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_VIDEO_SIZE = 5 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 
 export default function ChatInput({ replyTarget, onCancelReply }) {
   const { selectedUser, sendMessage } = useChatStore();
@@ -39,8 +40,11 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       toast.error(t('Choose an image, video, or supported document'));
       return;
     }
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error(t('Attachments must be smaller than 5MB'));
+    const maxFileSize = isDocument ? MAX_DOCUMENT_SIZE : MAX_IMAGE_VIDEO_SIZE;
+    if (file.size > maxFileSize) {
+      toast.error(t(isDocument
+        ? 'Documents must be 10 MB or smaller.'
+        : 'Images and videos must be 5 MB or smaller.'));
       return;
     }
     const reader = new FileReader();

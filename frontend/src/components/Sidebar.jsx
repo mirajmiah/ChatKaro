@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, FileText, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { Check, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { formatLastSeen } from '../lib/utils.js';
 import { useTranslation } from '../lib/i18n.js';
+import DocumentLink from './DocumentLink.jsx';
 
 function UserSkeleton() {
   return (
@@ -584,10 +585,11 @@ export default function Sidebar() {
                     <video src={message.video} controls className="mt-2 max-h-64 max-w-full rounded-lg" />
                   )}
                   {message.document && (
-                    <a href={message.document} target="_blank" rel="noreferrer" className="mt-2 flex items-center gap-2 text-sm text-primary underline">
-                      <FileText size={18} />
-                      {message.documentName || t('Open attachment')}
-                    </a>
+                    <DocumentLink
+                      messageId={message._id}
+                      documentName={message.documentName || t('Open attachment')}
+                      className="mt-2 text-primary"
+                    />
                   )}
                   <time className="mt-2 block text-right text-[11px] text-base-content/50">
                     {new Date(message.createdAt).toLocaleString(language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US')}

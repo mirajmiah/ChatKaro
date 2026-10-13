@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore.js';
 import { useSettingsStore } from './store/useSettingsStore.js';
@@ -21,6 +21,7 @@ const Loader = () => (
 export default function App() {
   const { checkAuth, authUser, isCheckingAuth } = useAuthStore();
   const { theme, language } = useSettingsStore();
+  const location = useLocation();
 
   useEffect(() => {
     checkAuth();
@@ -40,7 +41,7 @@ export default function App() {
   if (isCheckingAuth) return <Loader />;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={authUser && location.pathname === '/' ? 'app-authenticated-layout flex flex-col' : 'min-h-screen flex flex-col'}>
       {authUser && <Navbar />}
       <Routes>
         <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" replace />} />

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Image, Link2, Star, Video, X } from 'lucide-react';
+import { Image, Link2, Star, Video, X } from 'lucide-react';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
+import DocumentLink from './DocumentLink.jsx';
 
 const TABS = [
   { id: 'media', label: 'Media' },
@@ -143,11 +144,10 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
           {activeTab === 'documents' && (documents.length ? (
             <div className="space-y-2">
               {documents.map((message) => (
-                <a key={message._id} href={message.document} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-base-200 p-3 hover:bg-base-300">
-                  <FileText size={20} className="shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1 truncate text-sm">{message.documentName}</span>
+                <div key={message._id} className="flex items-center gap-3 rounded-xl bg-base-200 p-3 hover:bg-base-300">
+                  <DocumentLink messageId={message._id} documentName={message.documentName} className="min-w-0 flex-1" />
                   <span className="text-xs text-base-content/50">{new Date(message.createdAt).toLocaleDateString(language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US')}</span>
-                </a>
+                </div>
               ))}
             </div>
           ) : <p className="py-12 text-center text-sm text-base-content/50">{t('No documents shared yet.')}</p>)}
