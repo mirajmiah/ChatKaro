@@ -114,6 +114,7 @@ export const getUsers = async (req, res) => {
     for (const hiddenId of currentUser.hiddenContacts) {
       contactIds.delete(hiddenId.toString());
     }
+    const contactObjectIds = [...contactIds].map((id) => new mongoose.Types.ObjectId(id));
     const [users, unreadCounts, latestMessages] = await Promise.all([
       User.find({ _id: { $in: [...contactIds] } })
         .select('fullName email profilePic bio lastSeen'),
@@ -133,8 +134,8 @@ export const getUsers = async (req, res) => {
         {
           $match: {
             $or: [
-              { senderId: req.user._id, receiverId: { $in: [...contactIds] } },
-              { receiverId: req.user._id, senderId: { $in: [...contactIds] } },
+              { senderId: req.user._id, receiverId: { $in: contactObjectIds } },
+              { receiverId: req.user._id, senderId: { $in: contactObjectIds } },
             ],
             messageRequestStatus: { $ne: 'pending' },
             deletedAt: { $exists: false },
