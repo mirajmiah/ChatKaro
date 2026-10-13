@@ -202,7 +202,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={t('Type a message… (Enter to send, Shift+Enter for new line)')}
+            placeholder={t('Type a message…')}
             rows={1}
             className="textarea textarea-bordered w-full resize-none overflow-y-auto bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-2"
             style={{ minHeight: '2.5rem', maxHeight: '7.5rem' }}
