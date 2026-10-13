@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Zap, User, Settings, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useTranslation } from '../lib/i18n.js';
 
 export default function Navbar() {
   const { authUser, logout } = useAuthStore();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -18,7 +20,7 @@ export default function Navbar() {
         <Link
           to="/"
           className="flex items-center gap-2 group"
-          aria-label="ChatKaro Home"
+          aria-label={t('ChatKaro Home')}
         >
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
             <Zap size={18} className="text-primary-content fill-primary-content" />
@@ -36,26 +38,26 @@ export default function Navbar() {
          <Link
               to="/profile"
               className="btn btn-ghost btn-sm gap-2"
-              aria-label="Profile"
+              aria-label={t('Profile')}
             >
               <User size={18} />
-              <span className="hidden md:inline">Profile</span>
+              <span className="hidden md:inline">{t('Profile')}</span>
             </Link>
             <Link
               to="/settings"
               className="btn btn-ghost btn-sm gap-2"
-              aria-label="Settings"
+              aria-label={t('Settings')}
             >
               <Settings size={18} />
-              <span className="hidden md:inline">Settings</span>
+              <span className="hidden md:inline">{t('Settings')}</span>
             </Link>
             <button
               onClick={handleLogout}
               className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/10"
-              aria-label="Logout"
+              aria-label={t('Logout')}
             >
               <LogOut size={18} />
-              <span className="hidden md:inline">Logout</span>
+              <span className="hidden md:inline">{t('Logout')}</span>
             </button>
           </>
         ) : null}

@@ -20,7 +20,7 @@ const Loader = () => (
 
 export default function App() {
   const { checkAuth, authUser, isCheckingAuth } = useAuthStore();
-  const { theme } = useSettingsStore();
+  const { theme, language } = useSettingsStore();
 
   useEffect(() => {
     checkAuth();
@@ -29,6 +29,10 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('lang', language === 'bn' ? 'bn' : language === 'hi' ? 'hi' : 'en');
+  }, [language]);
 
   if (isCheckingAuth) return <Loader />;
 

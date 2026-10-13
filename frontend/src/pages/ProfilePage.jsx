@@ -2,9 +2,11 @@ import { useState, useRef } from 'react';
 import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useTranslation } from '../lib/i18n.js';
 
 export default function ProfilePage() {
   const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
+  const { language, t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
@@ -17,7 +19,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be smaller than 5MB');
+      alert(t('Image must be smaller than 5MB'));
       return;
     }
 
@@ -63,7 +65,7 @@ export default function ProfilePage() {
   };
 
   const memberSince = authUser?.createdAt
-    ? new Date(authUser.createdAt).toLocaleDateString([], {
+    ? new Date(authUser.createdAt).toLocaleDateString(language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -86,14 +88,14 @@ export default function ProfilePage() {
   <div className="flex w-full justify-start mb-6">
     <Link to="/" className="btn btn-ghost btn-sm gap-2">
       <ArrowLeft size={16} />
-      Back to Chats
+      {t('Back to Chats')}
     </Link>
   </div>
 
   <div className="text-center">
-    <h1 className="text-2xl font-bold">Your Profile</h1>
+    <h1 className="text-2xl font-bold">{t('Your Profile')}</h1>
     <p className="text-base-content/60 mt-1">
-      Manage your account information
+      {t('Manage your account information')}
     </p>
   </div>
 </div>
@@ -119,7 +121,7 @@ export default function ProfilePage() {
                 className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-base-200 ${
                   isOnline ? 'bg-success' : 'bg-base-300'
                 }`}
-                title={isOnline ? 'Online' : 'Offline'}
+                title={t(isOnline ? 'Online' : 'Offline')}
               />
 
               {/* Upload button */}
@@ -127,7 +129,7 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-60"
-                aria-label="Change profile picture"
+                aria-label={t('Change profile picture')}
               >
                 {isUploading ? (
                   <span className="loading loading-spinner loading-xs" />
@@ -154,7 +156,7 @@ export default function ProfilePage() {
                 <span
                   className={`w-2 h-2 rounded-full ${isOnline ? 'bg-success' : 'bg-base-content/30'}`}
                 />
-                {isOnline ? 'Online' : 'Offline'}
+                {t(isOnline ? 'Online' : 'Offline')}
               </span>
             </div>
 
@@ -164,7 +166,7 @@ export default function ProfilePage() {
                 <User size={18} className="text-primary shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
-                    Full Name
+                    {t('Full Name')}
                   </p>
                   {isEditingName ? (
                     <div className="flex items-center gap-2 mt-1">
@@ -183,7 +185,7 @@ export default function ProfilePage() {
                         onClick={handleSaveName}
                         disabled={isSavingName}
                         className="btn btn-primary btn-sm btn-square"
-                        aria-label="Save name"
+                        aria-label={t('Save name')}
                       >
                         {isSavingName ? <span className="loading loading-spinner loading-xs" /> : <Check size={16} />}
                       </button>
@@ -191,7 +193,7 @@ export default function ProfilePage() {
                         onClick={() => setIsEditingName(false)}
                         disabled={isSavingName}
                         className="btn btn-ghost btn-sm btn-square"
-                        aria-label="Cancel name editing"
+                        aria-label={t('Cancel name editing')}
                       >
                         <X size={16} />
                       </button>
@@ -205,10 +207,10 @@ export default function ProfilePage() {
                           setIsEditingName(true);
                         }}
                         className="btn btn-ghost btn-xs"
-                        aria-label="Edit name"
+                        aria-label={t('Edit name')}
                       >
                         <Pencil size={14} />
-                        <span>Edit</span>
+                        <span>{t('Edit')}</span>
                       </button>
                     </div>
                   )}
@@ -218,7 +220,7 @@ export default function ProfilePage() {
               <div className="rounded-lg bg-base-300/50 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-base-content/50">
-                    About me
+                    {t('About me')}
                   </p>
                   {!isEditingBio && (
                     <button
@@ -228,10 +230,10 @@ export default function ProfilePage() {
                         setIsEditingBio(true);
                       }}
                       className="btn btn-ghost btn-xs"
-                      aria-label="Edit About me"
+                      aria-label={t('Edit About me')}
                     >
                       <Pencil size={14} />
-                      <span>Edit</span>
+                      <span>{t('Edit')}</span>
                     </button>
                   )}
                 </div>
@@ -243,8 +245,8 @@ export default function ProfilePage() {
                       className="textarea textarea-bordered w-full"
                       rows={5}
                       maxLength={600}
-                      aria-label="About me"
-                      placeholder="Tell your contacts a little about yourself"
+                      aria-label={t('About me')}
+                      placeholder={t('Tell your contacts a little about yourself')}
                     />
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-base-content/50">{editedBio.length}/600</span>
@@ -255,7 +257,7 @@ export default function ProfilePage() {
                           disabled={isSavingBio}
                           className="btn btn-primary btn-sm"
                         >
-                          {isSavingBio ? <span className="loading loading-spinner loading-xs" /> : <><Check size={15} /> Save</>}
+                          {isSavingBio ? <span className="loading loading-spinner loading-xs" /> : <><Check size={15} /> {t('Save')}</>}
                         </button>
                         <button
                           type="button"
@@ -264,14 +266,14 @@ export default function ProfilePage() {
                           className="btn btn-ghost btn-sm"
                         >
                           <X size={15} />
-                          Cancel
+                          {t('Cancel')}
                         </button>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {authUser?.bio || <span className="text-base-content/50">Add a short introduction about yourself.</span>}
+                    {authUser?.bio || <span className="text-base-content/50">{t('Add a short introduction about yourself.')}</span>}
                   </p>
                 )}
               </div>
@@ -280,7 +282,7 @@ export default function ProfilePage() {
                 <Mail size={18} className="text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
-                    Email
+                    {t('Email')}
                   </p>
                   <p className="font-semibold truncate">{authUser?.email || '—'}</p>
                 </div>
@@ -290,7 +292,7 @@ export default function ProfilePage() {
                 <Calendar size={18} className="text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
-                    Member Since
+                    {t('Member Since')}
                   </p>
                   <p className="font-semibold">{memberSince}</p>
                 </div>
@@ -300,15 +302,15 @@ export default function ProfilePage() {
                 <Shield size={18} className="text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
-                    Account Status
+                    {t('Account Status')}
                   </p>
-                  <p className="font-semibold text-success">Active</p>
+                  <p className="font-semibold text-success">{t('Active')}</p>
                 </div>
               </div>
             </div>
 
             <p className="text-xs text-base-content/40 text-center">
-              Click the camera icon to upload a new profile photo (max 5MB)
+              {t('Click the camera icon to upload a new profile photo (max 5MB)')}
             </p>
           </div>
         </div>

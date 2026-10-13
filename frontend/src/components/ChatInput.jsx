@@ -3,12 +3,14 @@ import { FileText, Paperclip, Send, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useTranslation } from '../lib/i18n.js';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export default function ChatInput({ replyTarget, onCancelReply }) {
   const { selectedUser, sendMessage } = useChatStore();
   const { authUser } = useAuthStore();
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState(null); // { data, type }
   const [isSending, setIsSending] = useState(false);
@@ -34,11 +36,11 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     const isVideo = file.type.startsWith('video/');
     const isDocument = supportedDocuments.includes(extension);
     if (!isImage && !isVideo && !isDocument) {
-      toast.error('Choose an image, video, or supported document');
+      toast.error(t('Choose an image, video, or supported document'));
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Attachments must be smaller than 5MB');
+      toast.error(t('Attachments must be smaller than 5MB'));
       return;
     }
     const reader = new FileReader();
@@ -124,7 +126,11 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
           {attachment.type.startsWith('video/') ? (
             <video src={attachment.data} controls className="max-h-32 rounded-lg border border-base-300" />
           ) : attachment.type.startsWith('image/') ? (
-            <img src={attachment.data} alt="Preview" className="max-h-32 rounded-lg border border-base-300 shadow-md object-contain" />
+            <img
+              src={attachment.data}
+              alt={t('Preview')}
+              className="max-h-32 rounded-lg border border-base-300 shadow-md object-contain"
+            />
           ) : (
             <div className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 p-3 pr-9">
               <FileText size={20} className="text-primary" />
@@ -134,7 +140,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
           <button
             onClick={() => setAttachment(null)}
             className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-error text-error-content flex items-center justify-center shadow hover:scale-110 transition-transform"
-            aria-label="Remove attachment"
+            aria-label={t('Remove attachment')}
           >
             <X size={12} />
           </button>
@@ -145,13 +151,13 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
         <div className="mb-3 flex items-center gap-3 rounded-lg border-l-4 border-primary bg-base-100 px-3 py-2">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-primary">
-              Replying to {String(replyTarget.senderId) === String(authUser?._id) ? 'yourself' : selectedUser.fullName}
+              {t('Replying to {name}', { name: String(replyTarget.senderId) === String(authUser?._id) ? t('yourself') : selectedUser.fullName })}
             </p>
             <p className="truncate text-sm text-base-content/70">
-              {replyTarget.deletedAt ? 'Message deleted' : replyTarget.text || replyTarget.documentName || (replyTarget.image ? 'Photo' : replyTarget.video ? 'Video' : 'Attachment')}
+              {replyTarget.deletedAt ? t('Message deleted') : replyTarget.text || replyTarget.documentName || (replyTarget.image ? t('Photo') : replyTarget.video ? t('Video') : t('Attachment'))}
             </p>
           </div>
-          <button type="button" onClick={onCancelReply} className="btn btn-ghost btn-xs btn-circle" aria-label="Cancel reply">
+          <button type="button" onClick={onCancelReply} className="btn btn-ghost btn-xs btn-circle" aria-label={t('Cancel reply')}>
             <X size={14} />
           </button>
         </div>
@@ -166,7 +172,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
           className={`btn btn-ghost btn-sm btn-circle shrink-0 mb-0.5 ${
             attachment ? 'text-primary' : 'text-base-content/50'
           } hover:text-base-content`}
-          aria-label="Attach file"
+          aria-label={t('Attach file')}
         >
           <Paperclip size={20} />
         </button>
@@ -186,7 +192,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+            placeholder={t('Type a message… (Enter to send, Shift+Enter for new line)')}
             rows={1}
             className="textarea textarea-bordered w-full resize-none overflow-y-auto bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-2"
             style={{ minHeight: '2.5rem', maxHeight: '7.5rem' }}
@@ -201,7 +207,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
           onClick={handleSubmit}
           disabled={!canSend}
           className="btn btn-primary btn-sm btn-circle shrink-0 mb-0.5 transition-all"
-          aria-label="Send message"
+          aria-label={t('Send message')}
         >
           {isSending ? (
             <span className="loading loading-spinner loading-xs" />
@@ -212,7 +218,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       </div>
 
       <p className="mt-1.5 ml-10 hidden text-xs text-base-content/30 sm:block">
-        Shift + Enter for new line · Paste images from clipboard
+        {t('Shift + Enter for new line · Paste images from clipboard')}
       </p>
     </div>
   );

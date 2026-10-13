@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import api from '../lib/axios.js';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
+import { translateCurrent } from '../lib/i18n.js';
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -26,9 +27,9 @@ export const useAuthStore = create((set, get) => ({
       const res = await api.post('/auth/signup', data);
       set({ authUser: res.data });
       get().connectSocket(res.data);
-      toast.success('Account created!');
+      toast.success(translateCurrent('Account created!'));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Signup failed');
+      toast.error(translateCurrent(err.response?.data?.message || 'Signup failed'));
       throw err;
     }
   },
@@ -38,9 +39,9 @@ export const useAuthStore = create((set, get) => ({
       const res = await api.post('/auth/login', data);
       set({ authUser: res.data });
       get().connectSocket(res.data);
-      toast.success(`Welcome back, ${res.data.fullName}!`);
+      toast.success(translateCurrent('Welcome back, {name}!', { name: res.data.fullName }));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast.error(translateCurrent(err.response?.data?.message || 'Login failed'));
       throw err;
     }
   },
@@ -50,9 +51,9 @@ export const useAuthStore = create((set, get) => ({
       const res = await api.post('/auth/google', { credential });
       set({ authUser: res.data });
       get().connectSocket(res.data);
-      toast.success(`Welcome, ${res.data.fullName}!`);
+      toast.success(translateCurrent('Welcome, {name}!', { name: res.data.fullName }));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Google login failed');
+      toast.error(translateCurrent(err.response?.data?.message || 'Google login failed'));
       throw err;
     }
   },
@@ -60,9 +61,9 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
   try {
     await api.post('/auth/logout');
-    toast.success('Logged out');
+    toast.success(translateCurrent('Logged out'));
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Logout failed');
+    toast.error(translateCurrent(err.response?.data?.message || 'Logout failed'));
   } finally {
     get().disconnectSocket();
     set({ authUser: null });
@@ -73,9 +74,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await api.put('/auth/update-profile', data);
       set((state) => ({ authUser: { ...state.authUser, profilePic: res.data.profilePic } }));
-      toast.success('Profile updated');
+      toast.success(translateCurrent('Profile updated'));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
+      toast.error(translateCurrent(err.response?.data?.message || 'Update failed'));
       throw err;
     }
   },
@@ -84,9 +85,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await api.put('/auth/update-bio', { bio });
       set((state) => ({ authUser: { ...state.authUser, bio: res.data.bio } }));
-      toast.success('About me updated');
+      toast.success(translateCurrent('About me updated'));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Unable to update About me');
+      toast.error(translateCurrent(err.response?.data?.message || 'Unable to update About me'));
       throw err;
     }
   },
@@ -95,9 +96,9 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await api.put('/auth/update-name', { fullName });
       set((state) => ({ authUser: { ...state.authUser, fullName: res.data.fullName } }));
-      toast.success('Name updated');
+      toast.success(translateCurrent('Name updated'));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Name update failed');
+      toast.error(translateCurrent(err.response?.data?.message || 'Name update failed'));
       throw err;
     }
   },

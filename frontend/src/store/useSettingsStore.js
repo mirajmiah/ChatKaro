@@ -5,10 +5,17 @@ export const useSettingsStore = create(
   persist(
     (set) => ({
       theme: 'night',
-      guideLanguage: 'en',
+      language: 'en',
       setTheme: (theme) => set({ theme }),
-      setGuideLanguage: (guideLanguage) => set({ guideLanguage }),
+      setLanguage: (language) => set({ language }),
     }),
-    { name: 'nexus-settings' }
+    {
+      name: 'nexus-settings',
+      migrate: (persistedState) => ({
+        ...persistedState,
+        language: persistedState.language ?? persistedState.guideLanguage ?? 'en',
+      }),
+      version: 1,
+    }
   )
 );

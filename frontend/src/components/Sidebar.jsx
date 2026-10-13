@@ -3,6 +3,7 @@ import { Check, FileText, MoreVertical, Search, Trash2, UserMinus, UserPlus, Use
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { formatLastSeen } from '../lib/utils.js';
+import { useTranslation } from '../lib/i18n.js';
 
 function UserSkeleton() {
   return (
@@ -30,6 +31,7 @@ function InitialsAvatar({ name, size = 'w-11 h-11' }) {
 }
 
 export default function Sidebar() {
+  const { language, t } = useTranslation();
   const {
     users,
     contactRequests,
@@ -132,7 +134,7 @@ export default function Sidebar() {
   };
 
   const handleClearChat = async (user) => {
-    if (!window.confirm(`Clear chat with ${user.fullName}? This clears messages only for you. They will keep their messages.`)) return;
+    if (!window.confirm(t('Clear chat with {name}? This clears messages only for you. They will keep their messages.', { name: user.fullName }))) return;
     try {
       await deleteChat(user._id);
       setOpenChatMenu(null);
@@ -142,7 +144,7 @@ export default function Sidebar() {
   };
 
   const handleRemoveContact = async (user) => {
-    if (!window.confirm(`Remove ${user.fullName} from your contacts? This clears your chat only; they keep their messages. Their next messages will arrive as a request that you can accept or decline.`)) return;
+    if (!window.confirm(t('Remove {name} from your contacts? This clears your chat only; they keep their messages. Their next messages will arrive as a request that you can accept or decline.', { name: user.fullName }))) return;
     try {
       await removeContact(user._id);
       setOpenChatMenu(null);
@@ -195,7 +197,7 @@ export default function Sidebar() {
       <div className="px-4 pt-5 pb-3 border-b border-base-300 space-y-3">
         <div className="flex items-center gap-2">
           <Users size={20} className="text-primary" />
-          <h2 className="font-bold text-lg">Contacts</h2>
+          <h2 className="font-bold text-lg">{t('Contacts')}</h2>
           {visibleUsers.length > 0 && (
             <span className="badge badge-primary badge-sm ml-auto">{visibleUsers.length}</span>
           )}
@@ -209,8 +211,8 @@ export default function Sidebar() {
               setContactEmail(event.target.value);
               setContactSearchResult(null);
             }}
-            placeholder="Search by email"
-            aria-label="Contact email"
+            placeholder={t('Search by email')}
+            aria-label={t('Contact email')}
             autoComplete="email"
             required
             className="input input-bordered input-sm min-w-0 flex-1"
@@ -219,8 +221,8 @@ export default function Sidebar() {
             type="submit"
             disabled={isSearchingContact || !contactEmail.trim()}
             className="btn btn-primary btn-sm btn-square"
-            aria-label="Search contact"
-            title="Search contact"
+            aria-label={t('Search contact')}
+            title={t('Search contact')}
           >
             {isSearchingContact ? <span className="loading loading-spinner loading-xs" /> : <Search size={17} />}
           </button>
@@ -236,20 +238,20 @@ export default function Sidebar() {
               <p className="truncate text-sm font-semibold">{contactSearchResult.fullName}</p>
               <p className="truncate text-xs text-base-content/60">{contactSearchResult.email}</p>
               {contactSearchResult.requestStatus === 'sent' && (
-                <p className="mt-1 text-xs text-warning">Request sent · waiting for acceptance</p>
+                <p className="mt-1 text-xs text-warning">{t('Request sent · waiting for acceptance')}</p>
               )}
               {contactSearchResult.requestStatus === 'received' && (
-                <p className="mt-1 text-xs text-warning">They sent you a request · respond below</p>
+                <p className="mt-1 text-xs text-warning">{t('They sent you a request · respond below')}</p>
               )}
               {contactSearchResult.requestStatus === 'accepted' && !contactSearchResult.isHidden && (
-                <p className="mt-1 text-xs text-success">Connected · chat is available</p>
+                <p className="mt-1 text-xs text-success">{t('Connected · chat is available')}</p>
               )}
               {contactSearchResult.isHidden && (
-                <p className="mt-1 text-xs text-warning">Removed · accept their message request to reconnect</p>
+                <p className="mt-1 text-xs text-warning">{t('Removed · accept their message request to reconnect')}</p>
               )}
             </div>
             {contactSearchResult.isHidden ? (
-              <span className="badge badge-warning badge-outline badge-sm shrink-0">Removed</span>
+              <span className="badge badge-warning badge-outline badge-sm shrink-0">{t('Removed')}</span>
             ) : (
               <button
                 type="button"
@@ -260,17 +262,17 @@ export default function Sidebar() {
                 {isAddingContact
                   ? <span className="loading loading-spinner loading-xs" />
                   : contactSearchResult.requestStatus === 'sent'
-                    ? 'Sent'
+                    ? t('Sent')
                     : contactSearchResult.requestStatus === 'received'
-                      ? 'Respond below'
+                      ? t('Respond below')
                       : contactSearchResult.requestStatus === 'accepted'
-                        ? 'Connected'
-                        : <><UserPlus size={14} /> Request</>}
+                        ? t('Connected')
+                        : <><UserPlus size={14} /> {t('Request')}</>}
               </button>
             )}
           </div>
         )}
-        <p className="text-xs text-base-content/50">Send a request by email. You can chat after they accept.</p>
+        <p className="text-xs text-base-content/50">{t('Send a request by email. You can chat after they accept.')}</p>
 
         {/* Online filter */}
         <label className="flex items-center gap-2 cursor-pointer select-none group">
@@ -281,11 +283,11 @@ export default function Sidebar() {
             className="toggle toggle-primary toggle-xs"
           />
           <span className="text-sm text-base-content/70 group-hover:text-base-content transition-colors">
-            Online only
+            {t('Online only')}
           </span>
           {onlineOnly && (
             <span className="badge badge-success badge-outline badge-xs">
-              {onlineUsers.length} online
+              {t('{count} online', { count: onlineUsers.length })}
             </span>
           )}
         </label>
@@ -296,7 +298,7 @@ export default function Sidebar() {
         {contactRequests.length > 0 && (
           <section className="mb-2">
             <h3 className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">
-              Contact requests <span className="badge badge-primary badge-xs">{contactRequests.length}</span>
+              {t('Contact requests')} <span className="badge badge-primary badge-xs">{contactRequests.length}</span>
             </h3>
             {contactRequests.map((request) => (
               request.sender && <div key={request._id} className="flex items-center gap-2 px-3 py-2">
@@ -313,8 +315,8 @@ export default function Sidebar() {
                   type="button"
                   onClick={() => handleRespondToRequest(request, true)}
                   className="btn btn-success btn-xs btn-square"
-                  aria-label={`Accept request from ${request.sender.fullName}`}
-                  title="Accept"
+                  aria-label={t('Accept request from {name}', { name: request.sender.fullName })}
+                  title={t('Accept')}
                 >
                   <Check size={15} />
                 </button>
@@ -322,8 +324,8 @@ export default function Sidebar() {
                   type="button"
                   onClick={() => handleRespondToRequest(request, false)}
                   className="btn btn-ghost btn-xs btn-square text-error"
-                  aria-label={`Decline request from ${request.sender.fullName}`}
-                  title="Decline"
+                  aria-label={t('Decline request from {name}', { name: request.sender.fullName })}
+                  title={t('Decline')}
                 >
                   <X size={15} />
                 </button>
@@ -335,13 +337,13 @@ export default function Sidebar() {
         {messageRequests.length > 0 && (
           <section className="mb-2">
             <h3 className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">
-              Message requests <span className="badge badge-warning badge-xs">{messageRequests.length}</span>
+              {t('Message requests')} <span className="badge badge-warning badge-xs">{messageRequests.length}</span>
             </h3>
             {messageRequests.map((request) => {
               const message = request.latestMessage;
               const preview = message.text
                 || message.documentName
-                || (message.image ? 'Photo' : message.video ? 'Video' : 'Attachment');
+                || (message.image ? t('Photo') : message.video ? t('Video') : t('Attachment'));
               return (
                 <div key={request.sender._id} className="flex items-center gap-2 px-3 py-2">
                   {request.sender.profilePic ? (
@@ -353,20 +355,20 @@ export default function Sidebar() {
                     type="button"
                     onClick={() => handleViewMessageRequest(request)}
                     className="min-w-0 flex-1 text-left"
-                    aria-label={`View ${request.messageCount} message${request.messageCount === 1 ? '' : 's'} from ${request.sender.fullName}`}
+                    aria-label={t('View {count} message(s) from {name}', { count: request.messageCount, name: request.sender.fullName })}
                   >
                     <p className="truncate text-sm font-semibold">{request.sender.fullName}</p>
                     <p className="truncate text-xs text-base-content/60">{preview}</p>
                     <p className="text-xs text-warning">
-                      {request.messageCount} message{request.messageCount === 1 ? '' : 's'} · View before accepting
+                      {t('{count} message(s) · View before accepting', { count: request.messageCount })}
                     </p>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleRespondToMessageRequest(request, true)}
                     className="btn btn-success btn-xs btn-square"
-                    aria-label={`Accept message request from ${request.sender.fullName}`}
-                    title="Accept"
+                    aria-label={t('Accept message request from {name}', { name: request.sender.fullName })}
+                    title={t('Accept')}
                   >
                     <Check size={15} />
                   </button>
@@ -374,8 +376,8 @@ export default function Sidebar() {
                     type="button"
                     onClick={() => handleRespondToMessageRequest(request, false)}
                     className="btn btn-ghost btn-xs btn-square text-error"
-                    aria-label={`Decline message request from ${request.sender.fullName}`}
-                    title="Decline"
+                    aria-label={t('Decline message request from {name}', { name: request.sender.fullName })}
+                    title={t('Decline')}
                   >
                     <X size={15} />
                   </button>
@@ -395,7 +397,7 @@ export default function Sidebar() {
           <div className="flex flex-col items-center justify-center h-full gap-3 text-base-content/40 p-6 text-center">
             <Users size={36} strokeWidth={1.2} />
             <p className="text-sm">
-              {onlineOnly ? 'No users online right now' : 'No contacts found'}
+              {t(onlineOnly ? 'No users online right now' : 'No contacts found')}
             </p>
           </div>
         ) : (
@@ -437,12 +439,12 @@ export default function Sidebar() {
                     <p className="font-semibold truncate text-sm">{user.fullName}</p>
                     {!isOnline && user.lastSeen && (
                       <span className="text-xs text-base-content/40 shrink-0">
-                        {formatLastSeen(user.lastSeen)}
+                        {formatLastSeen(user.lastSeen, language)}
                       </span>
                     )}
                   </div>
                   <p className={`text-xs mt-0.5 ${isOnline ? 'text-success' : 'text-base-content/40'}`}>
-                    {isOnline ? 'Online' : 'Offline'}
+                    {t(isOnline ? 'Online' : 'Offline')}
                   </p>
                 </div>
                 </button>
@@ -453,8 +455,8 @@ export default function Sidebar() {
                     setOpenChatMenu((openId) => openId === user._id ? null : user._id);
                   }}
                   className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-base-content"
-                  aria-label={`Open chat options for ${user.fullName}`}
-                  title="Chat options"
+                  aria-label={t('Open chat options for {name}', { name: user.fullName })}
+                  title={t('Chat options')}
                 >
                   <MoreVertical size={17} />
                 </button>
@@ -466,7 +468,7 @@ export default function Sidebar() {
                       className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-error hover:bg-error/10"
                     >
                       <Trash2 size={16} />
-                      Clear chat
+                      {t('Clear chat')}
                     </button>
                     <button
                       type="button"
@@ -474,7 +476,7 @@ export default function Sidebar() {
                       className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-base-200"
                     >
                       <UserMinus size={16} />
-                      Remove contact
+                      {t('Remove contact')}
                     </button>
                   </div>
                 )}
@@ -492,7 +494,7 @@ export default function Sidebar() {
           <section
             role="dialog"
             aria-modal="true"
-            aria-label={`Message request from ${viewingMessageRequest.sender.fullName}`}
+            aria-label={t('Message request from {name}', { name: viewingMessageRequest.sender.fullName })}
             className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-base-100 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
@@ -504,13 +506,13 @@ export default function Sidebar() {
               )}
               <div className="min-w-0 flex-1">
                 <h2 className="truncate font-semibold">{viewingMessageRequest.sender.fullName}</h2>
-                <p className="text-xs text-base-content/60">Message request · review before accepting</p>
+                <p className="text-xs text-base-content/60">{t('Message request · review before accepting')}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingMessageRequest(null)}
                 className="btn btn-ghost btn-sm btn-circle"
-                aria-label="Close message request"
+                aria-label={t('Close message request')}
               >
                 <X size={18} />
               </button>
@@ -524,7 +526,7 @@ export default function Sidebar() {
                 <article key={message._id} className="max-w-[90%] rounded-xl bg-base-200 p-3">
                   {message.text && <p className="whitespace-pre-wrap break-words text-sm">{message.text}</p>}
                   {message.image && (
-                    <img src={message.image} alt="Image in message request" className="mt-2 max-h-64 rounded-lg object-contain" />
+                    <img src={message.image} alt={t('Image in message request')} className="mt-2 max-h-64 rounded-lg object-contain" />
                   )}
                   {message.video && (
                     <video src={message.video} controls className="mt-2 max-h-64 max-w-full rounded-lg" />
@@ -532,11 +534,11 @@ export default function Sidebar() {
                   {message.document && (
                     <a href={message.document} target="_blank" rel="noreferrer" className="mt-2 flex items-center gap-2 text-sm text-primary underline">
                       <FileText size={18} />
-                      {message.documentName || 'Open attachment'}
+                      {message.documentName || t('Open attachment')}
                     </a>
                   )}
                   <time className="mt-2 block text-right text-[11px] text-base-content/50">
-                    {new Date(message.createdAt).toLocaleString()}
+                    {new Date(message.createdAt).toLocaleString(language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US')}
                   </time>
                 </article>
               ))}
@@ -547,14 +549,14 @@ export default function Sidebar() {
                 onClick={() => handleRespondToMessageRequest(viewingMessageRequest, false)}
                 className="btn btn-ghost btn-sm text-error"
               >
-                Decline
+                {t('Decline')}
               </button>
               <button
                 type="button"
                 onClick={() => handleRespondToMessageRequest(viewingMessageRequest, true)}
                 className="btn btn-success btn-sm"
               >
-                Accept and chat
+                {t('Accept and chat')}
               </button>
             </footer>
           </section>

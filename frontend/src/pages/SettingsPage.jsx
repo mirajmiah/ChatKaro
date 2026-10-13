@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Check, Palette, X } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore.js';
+import { useTranslation } from '../lib/i18n.js';
 
 const DEVELOPER_IMAGE_URL = 'https://i.ibb.co/S7cZN3QT/Chat-Karo-image.jpg';
 
@@ -103,6 +104,7 @@ const THEMES = [
 ];
 
 function ThemeSwatch({ theme, isSelected, onClick }) {
+  const { t } = useTranslation();
   return (
     <button
       onClick={onClick}
@@ -112,7 +114,7 @@ function ThemeSwatch({ theme, isSelected, onClick }) {
         ${isSelected ? 'border-primary shadow-lg shadow-primary/20' : 'border-base-300 hover:border-primary/40'}
       `}
       style={{ backgroundColor: theme.bg }}
-      aria-label={`Select ${theme.label} theme`}
+      aria-label={t('Select {theme} theme', { theme: t(theme.label) })}
       aria-pressed={isSelected}
     >
       {/* Color dots */}
@@ -141,8 +143,9 @@ function ThemeSwatch({ theme, isSelected, onClick }) {
 }
 
 export default function SettingsPage() {
-  const { theme, setTheme, guideLanguage, setGuideLanguage } = useSettingsStore();
-  const guide = USAGE_GUIDE[guideLanguage] ?? USAGE_GUIDE.en;
+  const { theme, setTheme, language, setLanguage } = useSettingsStore();
+  const { t } = useTranslation();
+  const guide = USAGE_GUIDE[language] ?? USAGE_GUIDE.en;
   const [isDeveloperImageOpen, setIsDeveloperImageOpen] = useState(false);
 
   useEffect(() => {
@@ -168,7 +171,7 @@ export default function SettingsPage() {
   <div className="flex w-full justify-start mb-6">
     <Link to="/" className="btn btn-ghost btn-sm gap-2">
       <ArrowLeft size={16} />
-      Back to Chats
+      {t('Back to Chats')}
     </Link>
   </div>
 
@@ -177,9 +180,9 @@ export default function SettingsPage() {
       <Palette size={24} className="text-primary" />
     </div>
 
-    <h1 className="text-2xl font-bold">Settings</h1>
+    <h1 className="text-2xl font-bold">{t('Settings')}</h1>
     <p className="text-base-content/60 mt-1">
-      Customize your ChatKaro experience
+      {t('Customize your ChatKaro experience')}
     </p>
   </div>
 </div>
@@ -187,9 +190,9 @@ export default function SettingsPage() {
         <div className="card bg-base-200 shadow-xl border border-base-300">
           <div className="card-body gap-6">
             <div>
-              <h2 className="text-lg font-semibold mb-1">Theme</h2>
+              <h2 className="text-lg font-semibold mb-1">{t('Theme')}</h2>
               <p className="text-sm text-base-content/60 mb-4">
-                Choose your preferred color scheme. Changes apply instantly.
+                {t('Choose your preferred color scheme. Changes apply instantly.')}
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -208,7 +211,7 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Current Theme</p>
+                <p className="font-medium">{t('Current Theme')}</p>
                 <p className="text-sm text-base-content/60">
                   {THEMES.find((t) => t.id === theme)?.label ?? theme}
                 </p>
@@ -221,6 +224,36 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+
+          <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="app-language-title">
+            <div className="card-body gap-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 id="app-language-title" className="text-lg font-semibold">
+                    {t('App language')}
+                  </h2>
+                  <p className="mt-1 text-sm text-base-content/60">
+                    {t('Choose the language for the app interface. Your choice is saved on this device.')}
+                  </p>
+                </div>
+
+                <div role="group" aria-label={t('App language')} className="join self-start">
+                  {GUIDE_LANGUAGES.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`join-item btn btn-sm ${language === option.id ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setLanguage(option.id)}
+                      aria-pressed={language === option.id}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </section>
 
           <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="usage-guide-title">
             <div className="card-body gap-5">
@@ -239,19 +272,6 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div role="group" aria-label="Usage guide language" className="join self-start">
-                  {GUIDE_LANGUAGES.map((language) => (
-                    <button
-                      key={language.id}
-                      type="button"
-                      className={`join-item btn btn-sm ${guideLanguage === language.id ? 'btn-primary' : 'btn-outline'}`}
-                      onClick={() => setGuideLanguage(language.id)}
-                      aria-pressed={guideLanguage === language.id}
-                    >
-                      {language.label}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <ol className="grid gap-4 sm:grid-cols-2">
@@ -282,7 +302,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => setIsDeveloperImageOpen(true)}
-                  aria-label={`View ${guide.developerImageAlt} photo larger`}
+                  aria-label={t('View {name} photo larger', { name: guide.developerImageAlt })}
                   className="shrink-0 cursor-zoom-in rounded-2xl text-left transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
                 >
                   <img
@@ -307,14 +327,14 @@ export default function SettingsPage() {
           className="modal modal-open z-[1200] bg-black/80 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={`${guide.developerImageAlt} photo`}
+          aria-label={t('{name} photo', { name: guide.developerImageAlt })}
           onClick={() => setIsDeveloperImageOpen(false)}
         >
           <button
             type="button"
             autoFocus
             onClick={() => setIsDeveloperImageOpen(false)}
-            aria-label="Close photo"
+            aria-label={t('Close photo')}
             className="btn btn-circle btn-ghost absolute right-4 top-4 text-white hover:bg-white/20"
           >
             <X size={24} />

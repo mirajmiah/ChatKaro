@@ -3,6 +3,7 @@ import { ArrowLeft, Info, Phone, Video } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import ChatDetailsModal from './ChatDetailsModal.jsx';
+import { useTranslation } from '../lib/i18n.js';
 
 function InitialsAvatar({ name }) {
   const initials = name
@@ -18,6 +19,7 @@ function InitialsAvatar({ name }) {
 export default function ChatHeader({ messages, onJumpToMessage }) {
   const { selectedUser, selectUser } = useChatStore();
   const { onlineUsers } = useAuthStore();
+  const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
 
   if (!selectedUser) return null;
@@ -30,7 +32,7 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
       <button
         onClick={() => selectUser(null)}
         className="md:hidden btn btn-ghost btn-sm btn-circle"
-        aria-label="Back to contacts"
+        aria-label={t('Back to contacts')}
       >
         <ArrowLeft size={20} />
       </button>
@@ -49,7 +51,7 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
         <div className="min-w-0 flex-1">
           <p className="font-semibold truncate leading-tight">{selectedUser.fullName}</p>
           <p className={`text-xs ${isOnline ? 'text-success' : 'text-base-content/50'}`}>
-            {isOnline ? 'Online' : 'Offline'}
+            {t(isOnline ? 'Online' : 'Offline')}
           </p>
         </div>
         <Info size={17} className="mr-1 shrink-0 text-base-content/50" />
@@ -59,14 +61,14 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
       <div className="flex items-center gap-1 ml-auto">
         <button
           className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
-          aria-label="Voice call (coming soon)"
+          aria-label={t('Voice call (coming soon)')}
           disabled
         >
           <Phone size={18} />
         </button>
         <button
           className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
-          aria-label="Video call (coming soon)"
+          aria-label={t('Video call (coming soon)')}
           disabled
         >
           <Video size={18} />

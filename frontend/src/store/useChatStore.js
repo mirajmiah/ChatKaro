@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import api from '../lib/axios.js';
 import toast from 'react-hot-toast';
 import { useAuthStore } from './useAuthStore.js';
+import { translateCurrent } from '../lib/i18n.js';
 
 export const useChatStore = create((set, get) => ({
   users: [],
@@ -33,7 +34,7 @@ fetchUsers: async () => {
       };
     });
   } catch (err) {
-    toast.error(err.response?.data?.message || 'Failed to load users');
+    toast.error(translateCurrent(err.response?.data?.message || 'Failed to load users'));
   } finally {
     set({ isLoadingUsers: false });
   }
@@ -44,7 +45,7 @@ fetchUsers: async () => {
       const res = await api.get('/messages/contacts/search', { params: { email } });
       return res.data.contact;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to search for contact');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to search for contact'));
       throw err;
     }
   },
@@ -55,7 +56,7 @@ fetchUsers: async () => {
       set({ contactRequests: Array.isArray(res.data) ? res.data : [] });
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load contact requests');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to load contact requests'));
     }
   },
 
@@ -65,7 +66,7 @@ fetchUsers: async () => {
       set({ messageRequests: Array.isArray(res.data) ? res.data : [] });
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load message requests');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to load message requests'));
     }
   },
 
@@ -74,7 +75,7 @@ fetchUsers: async () => {
       const res = await api.get(`/messages/contacts/message-requests/${senderId}/messages`);
       return Array.isArray(res.data) ? res.data : [];
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load requested messages');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to load requested messages'));
       throw err;
     }
   },
@@ -82,10 +83,10 @@ fetchUsers: async () => {
   sendContactRequest: async (email) => {
     try {
       const res = await api.post('/messages/contacts', { email });
-      toast.success(res.data.message);
+      toast.success(translateCurrent(res.data.message));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send contact request');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to send contact request'));
       throw err;
     }
   },
@@ -99,10 +100,10 @@ fetchUsers: async () => {
         contactRequests: state.contactRequests.filter((request) => request._id !== requestId),
       }));
       if (accept) await get().fetchUsers();
-      toast.success(response.data.message);
+      toast.success(translateCurrent(response.data.message));
       return response.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to respond to contact request');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to respond to contact request'));
       throw err;
     }
   },
@@ -118,10 +119,10 @@ fetchUsers: async () => {
         ),
       }));
       if (accept) await get().fetchUsers();
-      toast.success(response.data.message);
+      toast.success(translateCurrent(response.data.message));
       return response.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to respond to message request');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to respond to message request'));
       throw err;
     }
   },
@@ -134,9 +135,9 @@ fetchUsers: async () => {
         selectedUser: state.selectedUser?._id === userId ? null : state.selectedUser,
         messages: state.selectedUser?._id === userId ? [] : state.messages,
       }));
-      toast.success(res.data.message);
+      toast.success(translateCurrent(res.data.message));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove contact');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to remove contact'));
       throw err;
     }
   },
@@ -151,7 +152,7 @@ fetchUsers: async () => {
       const res = await api.get(`/messages/${userId}`);
       set({ messages: Array.isArray(res.data) ? res.data : [] });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load messages');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to load messages'));
     } finally {
       set({ isLoadingMessages: false });
     }
@@ -163,10 +164,10 @@ fetchUsers: async () => {
       if (String(get().selectedUser?._id) === String(userId)) {
         set({ messages: [] });
       }
-      toast.success(res.data.message);
+      toast.success(translateCurrent(res.data.message));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete chat history');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to delete chat history'));
       throw err;
     }
   },
@@ -176,7 +177,7 @@ fetchUsers: async () => {
       const res = await api.post(`/messages/send/${receiverId}`, data);
       set((state) => ({ messages: [...state.messages, res.data] }));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send message');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to send message'));
       throw err;
     }
   },
@@ -191,7 +192,7 @@ fetchUsers: async () => {
       }));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to edit message');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to edit message'));
       throw err;
     }
   },
@@ -206,7 +207,7 @@ fetchUsers: async () => {
       }));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete message');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to delete message'));
       throw err;
     }
   },
@@ -221,7 +222,7 @@ fetchUsers: async () => {
       }));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update starred message');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to update starred message'));
       throw err;
     }
   },
@@ -236,7 +237,7 @@ fetchUsers: async () => {
       }));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update pinned message');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to update pinned message'));
       throw err;
     }
   },
@@ -247,10 +248,10 @@ fetchUsers: async () => {
       if (String(get().selectedUser?._id) === String(receiverId)) {
         set((state) => ({ messages: [...state.messages, res.data] }));
       }
-      toast.success('Message forwarded');
+      toast.success(translateCurrent('Message forwarded'));
       return res.data;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to forward message');
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to forward message'));
       throw err;
     }
   },

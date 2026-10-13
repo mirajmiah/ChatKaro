@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/useAuthStore.js';
 import ChatHeader from './ChatHeader.jsx';
 import ChatInput from './ChatInput.jsx';
 import MessageBubble from './MessageBubble.jsx';
+import { useTranslation } from '../lib/i18n.js';
 
 function BubbleSkeleton({ align = 'start' }) {
   return (
@@ -23,6 +24,7 @@ function BubbleSkeleton({ align = 'start' }) {
 export default function ChatWindow() {
   const { selectedUser, messages, users, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
   const { authUser } = useAuthStore();
+  const { t } = useTranslation();
   const bottomRef = useRef(null);
   const [replyTarget, setReplyTarget] = useState(null);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
@@ -90,22 +92,22 @@ export default function ChatWindow() {
       .map((message) => message.text)
       .join('\n');
     if (!selectedText) {
-      toast.error('The selected messages contain no copyable text.');
+      toast.error(t('The selected messages contain no copyable text.'));
       return;
     }
     try {
       await navigator.clipboard.writeText(selectedText);
-      toast.success('Selected messages copied');
+      toast.success(t('Selected messages copied'));
       exitSelectionMode();
     } catch {
-      toast.error('Unable to copy selected messages.');
+      toast.error(t('Unable to copy selected messages.'));
     }
   };
 
   const deleteSelectedMessages = async (scope) => {
     if (scope === 'everyone' && !canDeleteSelectedForEveryone) return;
-    const scopeLabel = scope === 'everyone' ? 'for everyone' : 'for you';
-    if (!window.confirm(`Delete ${selectedMessageIds.length} selected message(s) ${scopeLabel}?`)) return;
+    const scopeLabel = scope === 'everyone' ? t('for everyone') : t('for you');
+    if (!window.confirm(t('Delete {count} selected message(s) {scope}?', { count: selectedMessageIds.length, scope: scopeLabel }))) return;
 
     const results = await Promise.allSettled(
       selectedMessageIds.map((messageId) => deleteMessage(messageId, scope))
@@ -137,8 +139,8 @@ export default function ChatWindow() {
           <MessageSquare size={36} strokeWidth={1} />
         </div>
         <div>
-          <p className="text-lg font-semibold">No conversation selected</p>
-          <p className="text-sm mt-1">Pick a contact from the sidebar to start chatting</p>
+          <p className="text-lg font-semibold">{t('No conversation selected')}</p>
+          <p className="text-sm mt-1">{t('Pick a contact from the sidebar to start chatting')}</p>
         </div>
       </div>
     );
@@ -156,14 +158,14 @@ export default function ChatWindow() {
       <ChatHeader messages={messages} onJumpToMessage={jumpToMessage} />
       {selectedCount > 0 && (
         <div className="flex shrink-0 items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-2">
-          <button type="button" onClick={exitSelectionMode} className="btn btn-ghost btn-sm btn-circle" aria-label="Exit selection mode">
+          <button type="button" onClick={exitSelectionMode} className="btn btn-ghost btn-sm btn-circle" aria-label={t('Exit selection mode')}>
             <X size={18} />
           </button>
-          <span className="min-w-0 flex-1 text-sm font-medium">{selectedCount} selected</span>
-          <button type="button" onClick={copySelectedMessages} className="btn btn-ghost btn-sm btn-circle" aria-label="Copy selected messages" title="Copy">
+          <span className="min-w-0 flex-1 text-sm font-medium">{t('{count} selected', { count: selectedCount })}</span>
+          <button type="button" onClick={copySelectedMessages} className="btn btn-ghost btn-sm btn-circle" aria-label={t('Copy selected messages')} title={t('Copy')}>
             <Copy size={17} />
           </button>
-          <button type="button" onClick={() => setShowDeleteOptions(true)} className="btn btn-ghost btn-sm btn-circle text-error" aria-label="Delete selected messages" title="Delete selected messages">
+          <button type="button" onClick={() => setShowDeleteOptions(true)} className="btn btn-ghost btn-sm btn-circle text-error" aria-label={t('Delete selected messages')} title={t('Delete selected messages')}>
             <Trash2 size={17} />
           </button>
         </div>
@@ -171,30 +173,30 @@ export default function ChatWindow() {
       {showDeleteOptions && (
         <div className="modal modal-open z-[1100]" role="dialog" aria-modal="true" aria-labelledby="delete-selected-title">
           <div className="modal-box max-w-sm">
-            <h2 id="delete-selected-title" className="text-lg font-bold">Delete {selectedCount} selected message(s)?</h2>
-            <p className="mt-2 text-sm text-base-content/60">Choose who should no longer see the selected messages.</p>
+            <h2 id="delete-selected-title" className="text-lg font-bold">{t('Delete {count} selected message(s)?', { count: selectedCount })}</h2>
+            <p className="mt-2 text-sm text-base-content/60">{t('Choose who should no longer see the selected messages.')}</p>
             <div className="mt-5 flex flex-col gap-2">
               <button type="button" onClick={() => deleteSelectedMessages('me')} className="btn btn-outline">
-                Delete for me
+                {t('Delete for me')}
               </button>
               <button
                 type="button"
                 disabled={!canDeleteSelectedForEveryone}
                 onClick={() => deleteSelectedMessages('everyone')}
                 className="btn btn-error"
-                title={!canDeleteSelectedForEveryone ? 'Only your messages sent within the last 4 hours can be deleted for everyone.' : undefined}
+                title={!canDeleteSelectedForEveryone ? t('Only your messages sent within the last 4 hours can be deleted for everyone.') : undefined}
               >
-                Delete for everyone
+                {t('Delete for everyone')}
               </button>
               {!canDeleteSelectedForEveryone && (
-                <p className="text-xs text-base-content/50">Delete for everyone is available only when all selected messages are yours and were sent within the last 4 hours.</p>
+                <p className="text-xs text-base-content/50">{t('Delete for everyone is available only when all selected messages are yours and were sent within the last 4 hours.')}</p>
               )}
               <button type="button" onClick={() => setShowDeleteOptions(false)} className="btn btn-ghost mt-1">
-                Cancel
+                {t('Cancel')}
               </button>
             </div>
           </div>
-          <button type="button" className="modal-backdrop" onClick={() => setShowDeleteOptions(false)} aria-label="Close delete options" />
+          <button type="button" className="modal-backdrop" onClick={() => setShowDeleteOptions(false)} aria-label={t('Close delete options')} />
         </div>
       )}
       {pinnedMessages.length > 0 && (
@@ -204,7 +206,7 @@ export default function ChatWindow() {
           className="flex w-full items-center gap-3 border-b border-base-300 bg-base-200 px-4 py-2 text-left hover:bg-base-300"
         >
           <Pin size={16} className="shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-sm">{pinnedMessages[0].text || pinnedMessages[0].documentName || (pinnedMessages[0].image ? 'Photo' : pinnedMessages[0].video ? 'Video' : 'Attachment')}</span>
+          <span className="min-w-0 flex-1 truncate text-sm">{pinnedMessages[0].text || pinnedMessages[0].documentName || (pinnedMessages[0].image ? t('Photo') : pinnedMessages[0].video ? t('Video') : t('Attachment'))}</span>
           {pinnedMessages.length > 1 && <span className="badge badge-sm">{pinnedMessages.length}</span>}
         </button>
       )}
@@ -221,7 +223,7 @@ export default function ChatWindow() {
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-base-content/30 text-center p-8">
             <MessageSquare size={32} strokeWidth={1.2} />
-            <p className="text-sm">No messages yet. Say hello! 👋</p>
+            <p className="text-sm">{t('No messages yet. Say hello! 👋')}</p>
           </div>
         ) : (
           messages.map((msg) => (
