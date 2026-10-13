@@ -30,6 +30,9 @@ const USAGE_GUIDE = {
         description: 'Accept or decline contact requests in Contact requests. You can preview messages in Message requests before accepting or declining them.',
       },
     ],
+    aboutDeveloperTitle: 'About Developer',
+    aboutDeveloper: 'I’m Miraj Miah, a Computer Science and Engineering student who enjoys exploring technology and building new things. I’m particularly interested in web development and software development. I love learning new skills, working on practical projects, and improving myself step by step. I believe in staying curious, learning from mistakes, and growing through experience. My goal is to become a skilled developer and create something meaningful through my work.',
+    developerImageAlt: 'Miraj Miah',
   },
   bn: {
     title: 'ChatKaro কীভাবে ব্যবহার করবেন',
@@ -52,6 +55,9 @@ const USAGE_GUIDE = {
         description: 'Contact requests থেকে কন্ট্যাক্ট অনুরোধ গ্রহণ বা প্রত্যাখ্যান করুন। Message requests-এর বার্তা গ্রহণ বা প্রত্যাখ্যান করার আগে দেখে নিতে পারবেন।',
       },
     ],
+    aboutDeveloperTitle: 'ডেভেলপার সম্পর্কে',
+    aboutDeveloper: 'আমি মিরাজ মিয়া, কম্পিউটার সায়েন্স অ্যান্ড ইঞ্জিনিয়ারিংয়ের একজন শিক্ষার্থী। প্রযুক্তি অন্বেষণ করতে এবং নতুন কিছু তৈরি করতে আমার ভালো লাগে। ওয়েব ডেভেলপমেন্ট ও সফটওয়্যার ডেভেলপমেন্টে আমার বিশেষ আগ্রহ রয়েছে। আমি নতুন দক্ষতা শিখতে, হাতে-কলমে প্রকল্পে কাজ করতে এবং ধাপে ধাপে নিজেকে উন্নত করতে ভালোবাসি। আমি কৌতূহলী থাকা, ভুল থেকে শেখা এবং অভিজ্ঞতার মাধ্যমে এগিয়ে যাওয়ায় বিশ্বাস করি। আমার লক্ষ্য একজন দক্ষ ডেভেলপার হওয়া এবং নিজের কাজের মাধ্যমে অর্থবহ কিছু তৈরি করা।',
+    developerImageAlt: 'মিরাজ মিয়া',
   },
   hi: {
     title: 'ChatKaro का उपयोग कैसे करें',
@@ -74,6 +80,9 @@ const USAGE_GUIDE = {
         description: 'Contact requests में कॉन्टैक्ट अनुरोध स्वीकार या अस्वीकार करें। Message requests के संदेश स्वीकार या अस्वीकार करने से पहले देख सकते हैं।',
       },
     ],
+    aboutDeveloperTitle: 'डेवलपर के बारे में',
+    aboutDeveloper: 'मैं मिराज मिया हूँ, कंप्यूटर साइंस और इंजीनियरिंग का एक विद्यार्थी, जिसे तकनीक को जानना और नई चीज़ें बनाना पसंद है। मेरी खास रुचि वेब डेवलपमेंट और सॉफ्टवेयर डेवलपमेंट में है। मुझे नए कौशल सीखना, व्यावहारिक प्रोजेक्ट्स पर काम करना और कदम-दर-कदम खुद को बेहतर बनाना पसंद है। मैं जिज्ञासु बने रहने, गलतियों से सीखने और अनुभव के साथ आगे बढ़ने में विश्वास करता हूँ। मेरा लक्ष्य एक कुशल डेवलपर बनना और अपने काम के ज़रिए कुछ अर्थपूर्ण बनाना है।',
+    developerImageAlt: 'मिराज मिया',
   },
 };
 
@@ -245,6 +254,27 @@ export default function SettingsPage() {
                   </li>
                 ))}
               </ol>
+            </div>
+          </section>
+
+          <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="about-developer-title">
+            <div className="card-body gap-5">
+              <h2 id="about-developer-title" className="text-lg font-semibold">
+                {guide.aboutDeveloperTitle}
+              </h2>
+
+              <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+                <img
+                  src="https://i.ibb.co/S7cZN3QT/Chat-Karo-image.jpg"
+                  alt={guide.developerImageAlt}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  className="h-40 w-40 shrink-0 rounded-2xl border border-base-300 object-cover shadow-md"
+                />
+                <p className="text-sm leading-relaxed text-base-content/70">
+                  {guide.aboutDeveloper}
+                </p>
+              </div>
             </div>
           </section>
         </div>
