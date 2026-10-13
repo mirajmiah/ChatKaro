@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, Palette } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, Palette, X } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore.js';
+
+const DEVELOPER_IMAGE_URL = 'https://i.ibb.co/S7cZN3QT/Chat-Karo-image.jpg';
 
 const GUIDE_LANGUAGES = [
   { id: 'en', label: 'English' },
@@ -140,6 +143,18 @@ function ThemeSwatch({ theme, isSelected, onClick }) {
 export default function SettingsPage() {
   const { theme, setTheme, guideLanguage, setGuideLanguage } = useSettingsStore();
   const guide = USAGE_GUIDE[guideLanguage] ?? USAGE_GUIDE.en;
+  const [isDeveloperImageOpen, setIsDeveloperImageOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isDeveloperImageOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsDeveloperImageOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDeveloperImageOpen]);
 
   const handleThemeChange = (themeId) => {
     setTheme(themeId);
@@ -264,13 +279,20 @@ export default function SettingsPage() {
               </h2>
 
               <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
-                <img
-                  src="https://i.ibb.co/S7cZN3QT/Chat-Karo-image.jpg"
-                  alt={guide.developerImageAlt}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  className="h-40 w-40 shrink-0 rounded-2xl border border-base-300 object-cover shadow-md"
-                />
+                <button
+                  type="button"
+                  onClick={() => setIsDeveloperImageOpen(true)}
+                  aria-label={`View ${guide.developerImageAlt} photo larger`}
+                  className="shrink-0 cursor-zoom-in rounded-2xl text-left transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+                >
+                  <img
+                    src={DEVELOPER_IMAGE_URL}
+                    alt={guide.developerImageAlt}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="h-40 w-40 rounded-2xl border border-base-300 object-cover shadow-md"
+                  />
+                </button>
                 <p className="text-sm leading-relaxed text-base-content/70">
                   {guide.aboutDeveloper}
                 </p>
@@ -279,6 +301,33 @@ export default function SettingsPage() {
           </section>
         </div>
       </div>
+
+      {isDeveloperImageOpen && (
+        <div
+          className="modal modal-open z-[1200] bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${guide.developerImageAlt} photo`}
+          onClick={() => setIsDeveloperImageOpen(false)}
+        >
+          <button
+            type="button"
+            autoFocus
+            onClick={() => setIsDeveloperImageOpen(false)}
+            aria-label="Close photo"
+            className="btn btn-circle btn-ghost absolute right-4 top-4 text-white hover:bg-white/20"
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={DEVELOPER_IMAGE_URL}
+            alt={guide.developerImageAlt}
+            referrerPolicy="no-referrer"
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[85vh] max-w-[90vw] cursor-zoom-out rounded-xl object-contain shadow-2xl"
+          />
+        </div>
+      )}
     </div>
   );
 }
