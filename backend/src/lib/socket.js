@@ -2,12 +2,15 @@
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 
-// userId -> socketId
+// userId -> active socket ids
 const onlineUsers = new Map();
 
 let io;
 
-export const getReceiverSocketId = (userId) => onlineUsers.get(userId.toString());
+export const emitToUser = (userId, event, payload) => {
+  if (!io) return;
+  io.to(userId.toString()).emit(event, payload);
+};
 
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
@@ -36,12 +39,22 @@ export const initSocket = (httpServer) => {
       return;
     }
 
-    onlineUsers.set(userId, socket.id);
-    io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+    socket.join(userId);
+    const sockets = onlineUsers.get(userId) || new Set();
+    const wasOffline = sockets.size === 0;
+    sockets.add(socket.id);
+    onlineUsers.set(userId, sockets);
+    socket.emit('onlineUsers', Array.from(onlineUsers.keys()));
+    if (wasOffline) io.emit('onlineUsers', Array.from(onlineUsers.keys()));
 
     socket.on('disconnect', () => {
-      onlineUsers.delete(userId);
-      io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+      const activeSockets = onlineUsers.get(userId);
+      if (!activeSockets) return;
+      activeSockets.delete(socket.id);
+      if (activeSockets.size === 0) {
+        onlineUsers.delete(userId);
+        io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+      }
     });
   });
 

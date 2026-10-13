@@ -19,12 +19,16 @@ function SupportIllustration() {
 }
 
 export default function SignupPage() {
-  const { signup, googleLogin } = useAuthStore();
+  const { signup, verifySignupOtp, resendSignupOtp, googleLogin } = useAuthStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [otp, setOtp] = useState('');
 
   const handleChange = (event) => {
     setFormData((previous) => ({ ...previous, [event.target.name]: event.target.value }));
@@ -35,11 +39,35 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       await signup(formData);
-      navigate('/');
+      setVerificationStep(true);
     } catch {
       // Errors are reported by the auth store.
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+    setIsVerifying(true);
+    try {
+      await verifySignupOtp(formData.email, otp, formData.fullName, formData.password);
+      navigate('/');
+    } catch {
+      // Errors are reported by the auth store.
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setIsResending(true);
+    try {
+      await resendSignupOtp(formData.email);
+    } catch {
+      // Errors are reported by the auth store.
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -67,10 +95,60 @@ export default function SignupPage() {
     <main className="auth-page-transition grid min-h-screen min-h-[100dvh] flex-1 bg-white text-[#171717] lg:grid-cols-2">
       <section className="relative flex min-h-[100dvh] flex-col px-6 py-7 sm:px-12 lg:px-16 xl:px-20">
         <Link to="/" className="flex w-fit items-center gap-2.5 text-[#27202f]" aria-label={t('ChatKaro home')}>
-          <img src="/chatkaro-logo.png" alt="" className="h-8 w-8 object-contain" />
+          <img src="/chatkaro-logo.png" alt="" className="brand-logo h-8 w-8 object-contain" />
           <span className="text-lg font-bold tracking-tight">ChatKaro</span>
         </Link>
 
+        {verificationStep ? (
+          <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
+            <div className="mb-7">
+              <h1 className="text-3xl font-bold tracking-tight text-[#111] sm:text-4xl">{t('Verify your email')}</h1>
+              <p className="mt-2 text-sm text-gray-500">
+                {t('Enter the six-digit code sent to {email}', { email: formData.email })}
+              </p>
+            </div>
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
+              <div>
+                <label htmlFor="signup-otp" className="mb-2 block text-sm font-medium text-gray-800">{t('Verification code')}</label>
+                <input
+                  id="signup-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  placeholder="000000"
+                  className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-center text-xl tracking-[0.5em] text-gray-900 outline-none transition focus:border-[#604399] focus:ring-2 focus:ring-[#604399]/20"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isVerifying || otp.length !== 6}
+                className="flex h-11 w-full items-center justify-center rounded-md bg-[#604399] px-4 text-sm font-semibold text-white transition hover:bg-[#503781] focus:outline-none focus:ring-2 focus:ring-[#604399] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isVerifying ? <span className="loading loading-spinner loading-sm" /> : t('Verify email')}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={isResending}
+              className="mt-5 text-sm font-medium text-[#604399] underline underline-offset-2 disabled:opacity-60"
+            >
+              {isResending ? t('Sending…') : t('Resend verification code')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setVerificationStep(false)}
+              className="mt-4 text-sm text-gray-500 hover:text-gray-800"
+            >
+              {t('Back to account details')}
+            </button>
+          </div>
+        ) : (
         <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
           <div className="mb-7">
             <h1 className="text-3xl font-bold tracking-tight text-[#111] sm:text-4xl">{t('Create account')}</h1>
@@ -163,6 +241,7 @@ export default function SignupPage() {
             </Link>
           </p>
         </div>
+        )}
       </section>
 
       <SupportIllustration />

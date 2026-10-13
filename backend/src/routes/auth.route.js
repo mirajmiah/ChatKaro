@@ -1,6 +1,8 @@
 ﻿import express from 'express';
 import {
   signup,
+  verifySignupOtp,
+  resendSignupOtp,
   login,
   googleLogin,
   logout,
@@ -17,6 +19,8 @@ import { authLimiter } from '../middleware/rateLimit.middleware.js';
 const router = express.Router();
 
 router.post('/signup', authLimiter, signup);
+router.post('/signup/verify-otp', authLimiter, verifySignupOtp);
+router.post('/signup/resend-otp', authLimiter, resendSignupOtp);
 router.post('/login', authLimiter, login);
 router.post('/google', authLimiter, googleLogin);
 router.post('/logout', logout);

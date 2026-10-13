@@ -4,39 +4,15 @@ import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model.js';
 import cloudinary from '../lib/cloudinary.js';
+import { sendOtpEmail } from '../lib/email.js';
 
 const COOKIE_NAME = 'nexus-jwt';
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-const sendPasswordResetEmail = async (email, otp) => {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-
-  if (!apiKey || !from) return false;
-
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to: [email],
-      subject: 'Reset your ChatKaro password',
-      text: `Your ChatKaro password reset code is ${otp}. It expires in 15 minutes.`,
-      html: `<p>Your ChatKaro password reset code is:</p><p style="font-size: 28px; font-weight: bold; letter-spacing: 8px;">${otp}</p><p>This code expires in 15 minutes.</p>`,
-    }),
-  });
-
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`Email provider returned ${response.status}: ${details}`);
-  }
-
-  return true;
-};
+const hashOtp = (otp) => crypto
+  .createHmac('sha256', process.env.JWT_SECRET)
+  .update(otp)
+  .digest('hex');
 
 const signToken = (user) =>
   jwt.sign(
@@ -58,29 +34,90 @@ export const signup = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
 
-    if (!fullName || !email || !password) {
+    if (
+      typeof fullName !== 'string' || !fullName.trim() ||
+      typeof email !== 'string' || !email.trim() ||
+      typeof password !== 'string' || !password
+    ) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters.' });
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existing) {
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: normalizedEmail });
+    if (user?.emailVerified) {
       return res.status(400).json({ message: 'Email is already in use.' });
     }
 
     const hashedPassword = await bcryptjs.hash(password, 12);
-    const user = await User.create({
-      fullName: fullName.trim(),
-      email: email.toLowerCase().trim(),
-      password: hashedPassword,
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    if (!user) {
+      user = new User({
+        fullName: fullName.trim(),
+        email: normalizedEmail,
+        password: hashedPassword,
+        emailVerified: false,
+      });
+    }
+    user.signupOtpHash = hashOtp(otp);
+    user.signupOtpExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    try {
+      await sendOtpEmail(user.email, otp, 'signup');
+    } catch (error) {
+      console.error('signup verification email error:', error.message);
+      return res.status(503).json({ message: 'Unable to send the verification code. Check Gmail SMTP configuration and try again.' });
+    }
+
+    return res.status(200).json({
+      message: 'A verification code was sent to your email.',
+      verificationRequired: true,
+      email: user.email,
     });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Email is already in use.' });
+    }
+    console.error('signup error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
 
-    const token = signToken(user);
-    setCookie(res, token);
+export const verifySignupOtp = async (req, res) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+    const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
+    const fullName = typeof req.body.fullName === 'string' ? req.body.fullName.trim() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!email || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: 'Enter a valid six-digit verification code.' });
+    }
+    if (!fullName || fullName.length > 80 || password.length < 6) {
+      return res.status(400).json({ message: 'Enter a valid name and a password with at least 6 characters.' });
+    }
 
-    return res.status(201).json({
+    const otpHash = hashOtp(otp);
+    const user = await User.findOne({
+      email,
+      emailVerified: false,
+      signupOtpHash: otpHash,
+      signupOtpExpires: { $gt: Date.now() },
+    });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired verification code.' });
+
+    user.fullName = fullName;
+    user.password = await bcryptjs.hash(password, 12);
+    user.emailVerified = true;
+    user.signupOtpHash = undefined;
+    user.signupOtpExpires = undefined;
+    user.lastSeen = new Date();
+    await user.save();
+    setCookie(res, signToken(user));
+
+    return res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
       email: user.email,
@@ -90,7 +127,30 @@ export const signup = async (req, res) => {
       createdAt: user.createdAt,
     });
   } catch (error) {
-    console.error('signup error:', error.message);
+    console.error('verifySignupOtp error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const resendSignupOtp = async (req, res) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+    const user = email ? await User.findOne({ email, emailVerified: false }) : null;
+    if (!user) return res.status(404).json({ message: 'Unverified signup not found. Please create your account again.' });
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    user.signupOtpHash = hashOtp(otp);
+    user.signupOtpExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+    try {
+      await sendOtpEmail(user.email, otp, 'signup');
+    } catch (error) {
+      console.error('resend signup verification email error:', error.message);
+      return res.status(503).json({ message: 'Unable to send the verification code. Check Gmail SMTP configuration and try again.' });
+    }
+    return res.status(200).json({ message: 'A new verification code was sent to your email.' });
+  } catch (error) {
+    console.error('resendSignupOtp error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };
@@ -108,6 +168,9 @@ export const login = async (req, res) => {
 
     if (!user || !isMatch) {
       return res.status(400).json({ message: 'Invalid credentials.' });
+    }
+    if (!user.emailVerified) {
+      return res.status(403).json({ message: 'Please verify your email before signing in.' });
     }
 
     user.lastSeen = new Date();
@@ -164,7 +227,13 @@ export const googleLogin = async (req, res) => {
       if (user.googleId && user.googleId !== payload.sub) {
         return res.status(409).json({ message: 'This account is linked to another Google account.' });
       }
+      if (!user.emailVerified) {
+        user.password = await bcryptjs.hash(crypto.randomBytes(32).toString('hex'), 12);
+      }
       user.googleId = payload.sub;
+      user.emailVerified = true;
+      user.signupOtpHash = undefined;
+      user.signupOtpExpires = undefined;
       user.lastSeen = new Date();
       if (!user.profilePic && payload.picture) user.profilePic = payload.picture;
       await user.save();
@@ -281,42 +350,38 @@ export const forgotPassword = async (req, res) => {
   };
 
   try {
-    const email = req.body.email?.toLowerCase().trim();
+    const email = typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
     const user = email ? await User.findOne({ email }) : null;
 
     if (user) {
       const otp = crypto.randomInt(100000, 1000000).toString();
-      user.resetPasswordOtpHash = crypto.createHash('sha256').update(otp).digest('hex');
-      user.resetPasswordOtpExpires = Date.now() + 15 * 60 * 1000;
+      user.resetPasswordOtpHash = hashOtp(otp);
+      user.resetPasswordOtpExpires = Date.now() + 10 * 60 * 1000;
       await user.save();
 
-      let emailSent = false;
       try {
-        emailSent = await sendPasswordResetEmail(user.email, otp);
+        await sendOtpEmail(user.email, otp, 'passwordReset');
       } catch (error) {
         console.error('password reset email error:', error.message);
+        return res.status(503).json({ message: 'Unable to send the password reset code. Check Gmail SMTP configuration and try again.' });
       }
-
-      if (!emailSent) console.error('Password reset OTP email was not sent. Check Resend configuration.');
     }
 
     return res.status(200).json(response);
   } catch (error) {
     console.error('forgotPassword error:', error.message);
-    return res.status(200).json(response);
+    return res.status(500).json({ message: 'Unable to request a password reset.' });
   }
 };
 
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, password } = req.body;
-    const hashedOtp = crypto
-      .createHash('sha256')
-      .update(String(otp || ''))
-      .digest('hex');
+    const emailAddress = typeof email === 'string' ? email.toLowerCase().trim() : '';
+    const hashedOtp = hashOtp(String(otp || ''));
 
     const user = await User.findOne({
-      email: email?.toLowerCase().trim(),
+      email: emailAddress,
       resetPasswordOtpHash: hashedOtp,
       resetPasswordOtpExpires: { $gt: Date.now() },
     });

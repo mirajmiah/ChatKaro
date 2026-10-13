@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, FileText, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { formatLastSeen } from '../lib/utils.js';
@@ -51,7 +52,7 @@ export default function Sidebar() {
     removeContact,
     isLoadingUsers,
   } = useChatStore();
-  const { onlineUsers, socket } = useAuthStore();
+  const { authUser, onlineUsers, socket } = useAuthStore();
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
   const [contactSearchResult, setContactSearchResult] = useState(null);
@@ -77,7 +78,29 @@ export default function Sidebar() {
       useChatStore.getState().fetchMessageRequests();
     };
     socket.on('contactsUpdated', refreshContacts);
-    return () => socket.off('contactsUpdated', refreshContacts);
+    const handleNewMessage = (message) => {
+      useChatStore.getState().handleIncomingMessage(message);
+    };
+    const handleMessagesRead = ({ senderId }) => {
+      useChatStore.getState().handleMessagesRead(senderId);
+    };
+    const handleNotification = ({ type, name }) => {
+      const messages = {
+        contactRequest: 'New contact request from {name}',
+        messageRequest: 'New message request from {name}',
+        contactAccepted: '{name} accepted your contact request',
+      };
+      if (messages[type]) toast(t(messages[type], { name }));
+    };
+    socket.on('newMessage', handleNewMessage);
+    socket.on('messagesRead', handleMessagesRead);
+    socket.on('notification', handleNotification);
+    return () => {
+      socket.off('contactsUpdated', refreshContacts);
+      socket.off('newMessage', handleNewMessage);
+      socket.off('messagesRead', handleMessagesRead);
+      socket.off('notification', handleNotification);
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -194,7 +217,7 @@ export default function Sidebar() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-base-200">
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 border-b border-base-300 space-y-3">
+      <div className="px-3 pt-3 pb-3 sm:px-4 sm:pt-5 border-b border-base-300 space-y-3">
         <div className="flex items-center gap-2">
           <Users size={20} className="text-primary" />
           <h2 className="font-bold text-lg">{t('Contacts')}</h2>
@@ -215,12 +238,12 @@ export default function Sidebar() {
             aria-label={t('Contact email')}
             autoComplete="email"
             required
-            className="input input-bordered input-sm min-w-0 flex-1"
+            className="input input-bordered input-sm min-h-11 min-w-0 flex-1"
           />
           <button
             type="submit"
             disabled={isSearchingContact || !contactEmail.trim()}
-            className="btn btn-primary btn-sm btn-square"
+            className="btn btn-primary btn-sm btn-square min-h-11 min-w-11"
             aria-label={t('Search contact')}
             title={t('Search contact')}
           >
@@ -272,7 +295,7 @@ export default function Sidebar() {
             )}
           </div>
         )}
-        <p className="text-xs text-base-content/50">{t('Send a request by email. You can chat after they accept.')}</p>
+        <p className="hidden text-xs text-base-content/50 sm:block">{t('Send a request by email. You can chat after they accept.')}</p>
 
         {/* Online filter */}
         <label className="flex items-center gap-2 cursor-pointer select-none group">
@@ -301,7 +324,7 @@ export default function Sidebar() {
               {t('Contact requests')} <span className="badge badge-primary badge-xs">{contactRequests.length}</span>
             </h3>
             {contactRequests.map((request) => (
-              request.sender && <div key={request._id} className="flex items-center gap-2 px-3 py-2">
+              request.sender && <div key={request._id} className="flex min-h-16 items-center gap-2 px-3 py-2">
                 {request.sender.profilePic ? (
                   <img src={request.sender.profilePic} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
                 ) : (
@@ -314,7 +337,7 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => handleRespondToRequest(request, true)}
-                  className="btn btn-success btn-xs btn-square"
+                  className="btn btn-success btn-sm btn-square min-h-10 min-w-10"
                   aria-label={t('Accept request from {name}', { name: request.sender.fullName })}
                   title={t('Accept')}
                 >
@@ -323,7 +346,7 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => handleRespondToRequest(request, false)}
-                  className="btn btn-ghost btn-xs btn-square text-error"
+                  className="btn btn-ghost btn-sm btn-square min-h-10 min-w-10 text-error"
                   aria-label={t('Decline request from {name}', { name: request.sender.fullName })}
                   title={t('Decline')}
                 >
@@ -404,13 +427,29 @@ export default function Sidebar() {
           visibleUsers.map((user) => {
             const isOnline = onlineUsers.includes(user._id);
             const isSelected = selectedUser?._id === user._id;
+            const latestMessage = user.latestMessage;
+            const messagePreview = latestMessage && (
+              latestMessage.text
+              || latestMessage.documentName
+              || (latestMessage.image ? t('Photo') : latestMessage.video ? t('Video') : t('Attachment'))
+            );
+            const messageTime = latestMessage?.createdAt
+              ? new Date(latestMessage.createdAt).toLocaleTimeString(
+                  language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US',
+                  { hour: 'numeric', minute: '2-digit' }
+                )
+              : null;
+            const messagePrefix = latestMessage
+              && String(latestMessage.senderId) === String(authUser?._id)
+              ? `${t('You')}: `
+              : '';
 
             return (
               <div
                 key={user._id}
                 ref={openChatMenu === user._id ? chatMenuRef : null}
                 className={`
-                  relative w-full flex items-center gap-2 px-3 py-3
+                  relative min-h-16 w-full flex items-center gap-2 px-3 py-2.5 sm:py-3
                   hover:bg-base-300 transition-colors duration-100
                   ${isSelected ? 'bg-base-300 border-l-2 border-primary' : 'border-l-2 border-transparent'}
                 `}
@@ -437,15 +476,24 @@ export default function Sidebar() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <p className="font-semibold truncate text-sm">{user.fullName}</p>
-                    {!isOnline && user.lastSeen && (
+                    {messageTime ? (
+                      <span className="text-xs text-base-content/50 shrink-0">{messageTime}</span>
+                    ) : !isOnline && !user.unreadCount && user.lastSeen ? (
                       <span className="text-xs text-base-content/40 shrink-0">
                         {formatLastSeen(user.lastSeen, language)}
                       </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-0.5 flex min-w-0 items-center justify-between gap-2">
+                    <p className={`truncate text-xs ${latestMessage ? 'text-base-content/60' : isOnline ? 'text-success' : 'text-base-content/40'}`}>
+                      {latestMessage ? `${messagePrefix}${messagePreview}` : t(isOnline ? 'Online' : 'Offline')}
+                    </p>
+                    {user.unreadCount > 0 && (
+                      <span className="badge badge-primary badge-sm min-w-5 shrink-0">
+                        {user.unreadCount > 99 ? '99+' : user.unreadCount}
+                      </span>
                     )}
                   </div>
-                  <p className={`text-xs mt-0.5 ${isOnline ? 'text-success' : 'text-base-content/40'}`}>
-                    {t(isOnline ? 'Online' : 'Offline')}
-                  </p>
                 </div>
                 </button>
                 <button

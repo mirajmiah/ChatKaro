@@ -28,6 +28,9 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    const primary = getComputedStyle(document.documentElement).getPropertyValue('--p').trim();
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (primary && themeColor) themeColor.setAttribute('content', `hsl(${primary})`);
   }, [theme]);
 
   useEffect(() => {

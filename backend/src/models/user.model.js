@@ -15,6 +15,18 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    emailVerified: {
+      type: Boolean,
+      default: true,
+    },
+    signupOtpHash: {
+      type: String,
+      select: false,
+    },
+    signupOtpExpires: {
+      type: Date,
+      select: false,
+    },
     googleId: {
       type: String,
       unique: true,
@@ -47,10 +59,22 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    resetPasswordToken: String,
-    resetPasswordExpires: Date,
-    resetPasswordOtpHash: String,
-    resetPasswordOtpExpires: Date,
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordOtpHash: {
+      type: String,
+      select: false,
+    },
+    resetPasswordOtpExpires: {
+      type: Date,
+      select: false,
+    },
     tokenVersion: {
       type: Number,
       default: 0,

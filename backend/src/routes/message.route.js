@@ -11,6 +11,7 @@ import {
   declineContactRequest,
   removeContact,
   getMessages,
+  markMessagesRead,
   deleteChat,
   sendMessage,
   editMessage,
@@ -35,6 +36,7 @@ router.delete('/contacts/requests/:requestId', protectRoute, declineContactReque
 router.post('/contacts', protectRoute, addContact);
 router.delete('/contacts/:userId', protectRoute, removeContact);
 router.get('/:userId', protectRoute, getMessages);
+router.patch('/:userId/read', protectRoute, markMessagesRead);
 router.delete('/:userId', protectRoute, deleteChat);
 router.post('/send/:userId', protectRoute, sendMessage);
 router.post('/:messageId/forward', protectRoute, forwardMessage);

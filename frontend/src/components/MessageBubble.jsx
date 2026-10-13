@@ -19,6 +19,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useTranslation } from '../lib/i18n.js';
+import ImageViewer from './ImageViewer.jsx';
 
 function InitialsAvatar({ name, size = 'w-8 h-8' }) {
   const initials = name
@@ -52,6 +53,7 @@ export default function MessageBubble({
   const { language, t } = useTranslation();
   const isMine = String(message.senderId) === String(authUser?._id);
   const [imgExpanded, setImgExpanded] = useState(false);
+  const [showAvatarImage, setShowAvatarImage] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(message.text || '');
   const [isBusy, setIsBusy] = useState(false);
@@ -66,8 +68,9 @@ export default function MessageBubble({
   const canDelete = isMine && !message.deletedAt &&
     Date.now() - new Date(message.createdAt).getTime() <= 4 * 60 * 60 * 1000;
 
-  const avatar = isMine ? authUser?.profilePic : null; // Receiver avatar not passed here — shown in sidebar
-  const name = isMine ? authUser?.fullName : undefined;
+  const otherUser = users.find((user) => String(user._id) === String(isMine ? message.receiverId : message.senderId));
+  const avatar = isMine ? authUser?.profilePic : otherUser?.profilePic;
+  const name = isMine ? authUser?.fullName : otherUser?.fullName;
   const replySender = message.replyTo?.senderId
     ? (String(message.replyTo.senderId) === String(authUser?._id) ? t('You') : t('Contact'))
     : t('Message');
@@ -189,13 +192,29 @@ export default function MessageBubble({
       {/* Avatar */}
       <div className="chat-image avatar">
         {avatar ? (
-          <div className="w-8 h-8 rounded-full overflow-hidden">
-            <img src={avatar} alt={name} className="w-full h-full object-cover" />
-          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowAvatarImage(true);
+            }}
+            className="h-8 w-8 cursor-zoom-in overflow-hidden rounded-full p-0"
+            aria-label={t('View profile picture')}
+          >
+            <img src={avatar} alt={name} className="h-full w-full object-cover" />
+          </button>
         ) : (
           <InitialsAvatar name={name} />
         )}
       </div>
+      {showAvatarImage && avatar && (
+        <ImageViewer
+          src={avatar}
+          alt={t('Profile picture of {name}', { name: name || t('Profile') })}
+          closeLabel={t('Close image')}
+          onClose={() => setShowAvatarImage(false)}
+        />
+      )}
 
       {/* Bubble */}
       <div

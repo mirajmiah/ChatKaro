@@ -4,6 +4,11 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from './useAuthStore.js';
 import { translateCurrent } from '../lib/i18n.js';
 
+const sortByLatestMessage = (users) => users.sort((first, second) => (
+  new Date(second.latestMessage?.createdAt || 0).getTime()
+  - new Date(first.latestMessage?.createdAt || 0).getTime()
+));
+
 export const useChatStore = create((set, get) => ({
   users: [],
   contactRequests: [],
@@ -24,6 +29,7 @@ fetchUsers: async () => {
       const users = Array.isArray(res.data)
       ? res.data.filter((user) => String(user._id) !== currentUserId)
       : [];
+      sortByLatestMessage(users);
 
     set((state) => {
       const selectedStillMutual = users.some((user) => user._id === state.selectedUser?._id);
@@ -158,6 +164,61 @@ fetchUsers: async () => {
     }
   },
 
+  markMessagesRead: async (userId) => {
+    try {
+      await api.patch(`/messages/${userId}/read`);
+      get().clearUnreadCount(userId);
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to mark messages as read'));
+    }
+  },
+
+  handleIncomingMessage: (message) => {
+    const authUser = useAuthStore.getState().authUser;
+    if (!authUser) return;
+
+    const currentUserId = String(authUser._id);
+    const senderId = String(message.senderId);
+    const receiverId = String(message.receiverId);
+    const isIncoming = receiverId === currentUserId;
+    const contactId = isIncoming ? senderId : receiverId;
+    const { selectedUser, users } = get();
+    const isConversationOpen = String(selectedUser?._id) === contactId;
+
+    set((state) => {
+      const exists = state.messages.some((item) => item._id === message._id);
+      return {
+        messages: isConversationOpen && !exists
+          ? [...state.messages, message]
+          : state.messages,
+        users: sortByLatestMessage(state.users.map((user) => String(user._id) === contactId
+          ? {
+              ...user,
+              latestMessage: message,
+              unreadCount: Math.max(0, (user.unreadCount || 0) + (isIncoming && !isConversationOpen ? 1 : 0)),
+            }
+          : user)),
+      };
+    });
+
+    if (isIncoming && isConversationOpen) {
+      get().markMessagesRead(contactId);
+    } else if (isIncoming) {
+      const contact = users.find((user) => String(user._id) === contactId);
+      toast(translateCurrent('New message from {name}', { name: contact?.fullName || translateCurrent('someone') }));
+    }
+  },
+
+  clearUnreadCount: (userId) => {
+    set((state) => ({
+      users: state.users.map((user) => String(user._id) === String(userId)
+        ? { ...user, unreadCount: 0 }
+        : user),
+    }));
+  },
+
+  handleMessagesRead: (senderId) => get().clearUnreadCount(senderId),
+
   deleteChat: async (userId) => {
     try {
       const res = await api.delete(`/messages/${userId}`);
@@ -175,7 +236,7 @@ fetchUsers: async () => {
   sendMessage: async (receiverId, data) => {
     try {
       const res = await api.post(`/messages/send/${receiverId}`, data);
-      set((state) => ({ messages: [...state.messages, res.data] }));
+      get().addMessage(res.data);
     } catch (err) {
       toast.error(translateCurrent(err.response?.data?.message || 'Failed to send message'));
       throw err;
@@ -246,7 +307,7 @@ fetchUsers: async () => {
     try {
       const res = await api.post(`/messages/${messageId}/forward`, { receiverId });
       if (String(get().selectedUser?._id) === String(receiverId)) {
-        set((state) => ({ messages: [...state.messages, res.data] }));
+        get().addMessage(res.data);
       }
       toast.success(translateCurrent('Message forwarded'));
       return res.data;
@@ -267,14 +328,6 @@ fetchUsers: async () => {
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-    socket.off('newMessage');
-    socket.on('newMessage', (message) => {
-      const { selectedUser } = get();
-      if (!selectedUser) return;
-      if (message.senderId === selectedUser._id || message.receiverId === selectedUser._id) {
-        get().addMessage(message);
-      }
-    });
     socket.on('messageEdited', (message) => {
       set((state) => ({
         messages: state.messages.map((item) => item._id === message._id ? message : item),
@@ -295,7 +348,6 @@ fetchUsers: async () => {
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-    socket.off('newMessage');
     socket.off('messageEdited');
     socket.off('messageDeleted');
     socket.off('messagePinned');

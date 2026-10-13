@@ -25,11 +25,34 @@ export const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     try {
       const res = await api.post('/auth/signup', data);
-      set({ authUser: res.data });
-      get().connectSocket(res.data);
-      toast.success(translateCurrent('Account created!'));
+      toast.success(translateCurrent('Verification code sent to your email.'));
+      return res.data;
     } catch (err) {
       toast.error(translateCurrent(err.response?.data?.message || 'Signup failed'));
+      throw err;
+    }
+  },
+
+  verifySignupOtp: async (email, otp, fullName, password) => {
+    try {
+      const res = await api.post('/auth/signup/verify-otp', { email, otp, fullName, password });
+      set({ authUser: res.data });
+      get().connectSocket(res.data);
+      toast.success(translateCurrent('Email verified. Your account is ready.'));
+      return res.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Unable to verify email'));
+      throw err;
+    }
+  },
+
+  resendSignupOtp: async (email) => {
+    try {
+      const res = await api.post('/auth/signup/resend-otp', { email });
+      toast.success(translateCurrent(res.data.message));
+      return res.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Unable to resend verification code'));
       throw err;
     }
   },

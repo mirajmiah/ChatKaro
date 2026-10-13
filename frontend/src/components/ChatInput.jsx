@@ -44,7 +44,17 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       return;
     }
     const reader = new FileReader();
-    reader.onloadend = () => setAttachment({ data: reader.result, type: file.type, name: file.name });
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        toast.error(t('Unable to read this file.'));
+        return;
+      }
+      const data = extension === 'pdf'
+        ? reader.result.replace(/^data:[^;]+;/, 'data:application/pdf;')
+        : reader.result;
+      setAttachment({ data, type: file.type || (extension === 'pdf' ? 'application/pdf' : 'application/octet-stream'), name: file.name });
+    };
+    reader.onerror = () => toast.error(t('Unable to read this file.'));
     reader.readAsDataURL(file);
   };
 
@@ -169,7 +179,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`btn btn-ghost btn-sm btn-circle shrink-0 mb-0.5 ${
+          className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
             attachment ? 'text-primary' : 'text-base-content/50'
           } hover:text-base-content`}
           aria-label={t('Attach file')}
@@ -206,7 +216,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
           onMouseDown={(event) => event.preventDefault()}
           onClick={handleSubmit}
           disabled={!canSend}
-          className="btn btn-primary btn-sm btn-circle shrink-0 mb-0.5 transition-all"
+          className="btn btn-primary btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 transition-all"
           aria-label={t('Send message')}
         >
           {isSending ? (

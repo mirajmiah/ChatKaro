@@ -7,9 +7,12 @@ A production-ready, full-stack real-time chat application built with React 18, N
 ## Features
 
 - Real-time messaging via Socket.IO with automatic reconnection
-- JWT authentication stored in HTTP-only cookies
+- Gmail SMTP email verification at signup; JWT authentication stored in HTTP-only cookies
 - Image uploads (avatars + chat images) via Cloudinary
 - Online presence — live online/offline user indicators
+- Live contact/message request updates, notifications, and per-chat unread counts
+- PDF and other supported document sharing via Cloudinary
+- Installable mobile/desktop web app with a PWA manifest
 - Responsive design — mobile sidebar/chat view switching + desktop split-pane
 - Dark-first UI with 10 switchable DaisyUI themes
 - Duplicate message prevention and stable socket listeners
@@ -94,8 +97,12 @@ CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
-RESEND_API_KEY=your-resend-api-key
-EMAIL_FROM=ChatKaro <onboarding@yourdomain.com>
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-gmail-address@gmail.com
+SMTP_PASS=your-16-character-gmail-app-password
+SMTP_FROM=ChatKaro <your-gmail-address@gmail.com>
 GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 ```
 
@@ -109,13 +116,14 @@ GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 1. Create a free account at https://cloudinary.com
 2. From the Dashboard, copy Cloud Name, API Key, API Secret
 
-**Password reset email:**
-1. Create a Resend account at https://resend.com
-2. Create an API key and add it to `RESEND_API_KEY`
-3. Verify your sending domain, then set `EMAIL_FROM` to an address on that domain
-4. Restart the backend after changing `.env`
+**Gmail SMTP (signup verification and password-reset codes):**
+1. Enable 2-Step Verification for the Gmail account used to send app email.
+2. Create a Google App Password in that account’s security settings. Use the App Password, not the normal Gmail password.
+3. Set `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` in `backend/.env` (and in the production host’s backend environment settings). Never put these values in frontend variables or commit them.
+4. Keep the default host and port for Gmail (`smtp.gmail.com`, port `465`, secure `true`) unless you intentionally configure another SMTP relay.
+5. Restart/redeploy the backend after setting the variables.
 
-Without these two variables, development mode shows a temporary reset token instead of sending email.
+New password-based accounts must verify their email with a six-digit code that expires after 10 minutes. Google sign-in accounts use Google’s verified email and do not need a second verification code. Legacy accounts remain verified.
 
 Install dependencies:
 ```bash
@@ -199,7 +207,9 @@ FRONTEND_URL=https://your-domain.com
 
 | Method | Endpoint                   | Auth Required | Description            |
 |--------|----------------------------|---------------|------------------------|
-| POST   | /api/auth/signup           | No            | Register new user      |
+| POST   | /api/auth/signup           | No            | Start registration and send email verification code |
+| POST   | /api/auth/signup/verify-otp | No           | Verify signup code, finalize account details, and create login session |
+| POST   | /api/auth/signup/resend-otp | No           | Send a replacement signup code |
 | POST   | /api/auth/login            | No            | Login, get JWT cookie  |
 | POST   | /api/auth/logout           | Yes           | Clear JWT cookie       |
 | GET    | /api/auth/check            | Yes           | Verify auth, get user  |
@@ -224,6 +234,7 @@ FRONTEND_URL=https://your-domain.com
 |--------|-----------------------------|---------------|--------------------------|
 | GET    | /api/messages/users         | Yes           | List all other users     |
 | GET    | /api/messages/:userId       | Yes           | Get conversation history |
+| PATCH  | /api/messages/:userId/read  | Yes           | Mark incoming conversation messages as read |
 | POST   | /api/messages/send/:userId  | Yes           | Send a message           |
 
 **Send message body (at least one field required):**
@@ -278,7 +289,7 @@ updatedAt  Date      auto
 - Message length capped at 2000 characters
 - Image uploads: max 5MB client + server side
 - Passwords excluded from all API responses
-- Password reset tokens are hashed and expire after 15 minutes
+- Signup and password-reset OTPs are hashed and expire after 10 minutes
 - Password resets invalidate existing JWT sessions
 - All secrets in .env (never committed)
 

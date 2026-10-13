@@ -58,7 +58,7 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
       </button>
 
       {/* Actions (decorative for now) */}
-      <div className="flex items-center gap-1 ml-auto">
+      <div className="hidden items-center gap-1 ml-auto sm:flex">
         <button
           className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
           aria-label={t('Voice call (coming soon)')}

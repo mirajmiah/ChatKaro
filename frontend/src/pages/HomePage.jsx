@@ -6,7 +6,7 @@ export default function HomePage() {
   const { selectedUser } = useChatStore();
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] supports-[height:100dvh]:h-[calc(100dvh-4rem)] min-h-0 overflow-hidden">
+    <div className="app-chat-layout flex min-h-0 overflow-hidden">
       {/* Sidebar: always visible on md+, hidden on mobile when chat open */}
       <div
         className={`${

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileText, Image, Link2, Star, Video, X } from 'lucide-react';
 import { useTranslation } from '../lib/i18n.js';
+import ImageViewer from './ImageViewer.jsx';
 
 const TABS = [
   { id: 'media', label: 'Media' },
@@ -43,6 +44,7 @@ function MessageList({ messages, onJumpToMessage, emptyText, t, language }) {
 export default function ChatDetailsModal({ user, messages, isOnline, onClose, onJumpToMessage }) {
   const { language, t } = useTranslation();
   const [activeTab, setActiveTab] = useState('media');
+  const [showProfileImage, setShowProfileImage] = useState(false);
   const activeMessages = messages.filter((message) => !message.deletedAt);
   const media = activeMessages.filter((message) => message.image || message.video);
   const documents = activeMessages.filter((message) => message.document);
@@ -66,7 +68,14 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
             <X size={18} />
           </button>
           {user.profilePic ? (
-            <img src={user.profilePic} alt={user.fullName} className="h-24 w-24 rounded-full object-cover" />
+            <button
+              type="button"
+              onClick={() => setShowProfileImage(true)}
+              className="h-24 w-24 cursor-zoom-in overflow-hidden rounded-full"
+              aria-label={t('View profile picture')}
+            >
+              <img src={user.profilePic} alt={user.fullName} className="h-full w-full object-cover" />
+            </button>
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 text-2xl font-bold text-primary">{initials}</div>
           )}
@@ -147,6 +156,14 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
         </div>
       </div>
       <button type="button" className="modal-backdrop" onClick={onClose} aria-label={t('Close chat details')} />
+      {showProfileImage && user.profilePic && (
+        <ImageViewer
+          src={user.profilePic}
+          alt={t('Profile picture of {name}', { name: user.fullName })}
+          closeLabel={t('Close image')}
+          onClose={() => setShowProfileImage(false)}
+        />
+      )}
     </div>
   );
 

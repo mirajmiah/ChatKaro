@@ -3,6 +3,7 @@ import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } fro
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
+import ImageViewer from '../components/ImageViewer.jsx';
 
 export default function ProfilePage() {
   const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
@@ -10,6 +11,7 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
+  const [showProfileImage, setShowProfileImage] = useState(false);
   const fileInputRef = useRef(null);
 
   const isOnline = onlineUsers.includes(authUser?._id);
@@ -82,7 +84,7 @@ export default function ProfilePage() {
     : '?';
 
   return (
-    <div className="flex-1 flex items-start justify-center px-4 py-12">
+    <div className="flex-1 flex items-start justify-center px-3 py-5 sm:px-4 sm:py-12">
       <div className="w-full max-w-lg">
         <div className="mb-8">
   <div className="flex w-full justify-start mb-6">
@@ -106,11 +108,18 @@ export default function ProfilePage() {
             <div className="relative">
               <div className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-primary/30 bg-base-300 flex items-center justify-center">
                 {authUser?.profilePic ? (
-                  <img
-                    src={authUser.profilePic}
-                    alt={authUser.fullName}
-                    className="w-full h-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileImage(true)}
+                    className="h-full w-full cursor-zoom-in"
+                    aria-label={t('View profile picture')}
+                  >
+                    <img
+                      src={authUser.profilePic}
+                      alt={authUser.fullName}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
                 ) : (
                   <span className="text-3xl font-bold text-base-content/50">{initials}</span>
                 )}
@@ -315,6 +324,14 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      {showProfileImage && (
+        <ImageViewer
+          src={authUser.profilePic}
+          alt={t('Profile picture of {name}', { name: authUser.fullName })}
+          closeLabel={t('Close image')}
+          onClose={() => setShowProfileImage(false)}
+        />
+      )}
     </div>
   );
 }

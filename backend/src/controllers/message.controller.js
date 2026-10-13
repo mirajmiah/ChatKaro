@@ -2,14 +2,18 @@
 import User from '../models/user.model.js';
 import ContactRequest from '../models/contactRequest.model.js';
 import mongoose from 'mongoose';
+import { randomUUID } from 'crypto';
 import cloudinary from '../lib/cloudinary.js';
-import { getReceiverSocketId, io } from '../lib/socket.js';
+import { emitToUser } from '../lib/socket.js';
 
 // ~5 MB base64 limit (base64 adds ~37% overhead)
-const MAX_IMAGE_BASE64_LENGTH = Math.ceil(5 * 1024 * 1024 * 1.37);
+const MAX_ATTACHMENT_BASE64_LENGTH = Math.ceil(5 * 1024 * 1024 * 1.37);
+const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const DELETE_WINDOW_MS = 4 * 60 * 60 * 1000;
 const REPLY_PREVIEW_FIELDS = 'text image video document documentName senderId deletedAt';
+
+class AttachmentValidationError extends Error {}
 
 const serializeMessage = (message, userId) => {
   const serialized = message.toObject();
@@ -21,9 +25,47 @@ const serializeMessage = (message, userId) => {
 const emitToConversation = (message, event) => {
   const participantIds = [message.senderId.toString(), message.receiverId.toString()];
   for (const userId of new Set(participantIds)) {
-    const socketId = getReceiverSocketId(userId);
-    if (socketId) io.to(socketId).emit(event, serializeMessage(message, userId));
+    emitToUser(userId, event, serializeMessage(message, userId));
   }
+};
+
+const uploadRawDocument = (data, documentName) => {
+  const extension = documentName.split('.').pop()?.toLowerCase();
+  const supportedExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip']);
+  if (!extension || !supportedExtensions.has(extension)) {
+    throw new AttachmentValidationError('Unsupported document type.');
+  }
+
+  const dataUrl = /^data:([a-z0-9.+-]+\/[a-z0-9.+-]+);base64,([a-z0-9+/=\r\n]+)$/i.exec(data);
+  if (!dataUrl) throw new AttachmentValidationError('Document data is invalid.');
+  const buffer = Buffer.from(dataUrl[2], 'base64');
+  if (!buffer.length || buffer.length > MAX_DOCUMENT_SIZE) {
+    throw new AttachmentValidationError('Attachment exceeds 5 MB limit.');
+  }
+  if (extension === 'pdf' && (
+    dataUrl[1].toLowerCase() !== 'application/pdf' ||
+    buffer.subarray(0, 5).toString() !== '%PDF-'
+  )) {
+    throw new AttachmentValidationError('The selected file is not a valid PDF.');
+  }
+
+  const extensionSuffix = `.${extension}`;
+  const safeBaseName = documentName
+    .slice(0, -extensionSuffix.length)
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .slice(0, 180) || 'attachment';
+  const safeName = `${safeBaseName}${extensionSuffix}`;
+  const publicId = `${randomUUID()}-${safeName}`;
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      { folder: 'nexus-chat/messages', public_id: publicId, resource_type: 'raw' },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result?.secure_url) return reject(new Error('Document upload returned no URL.'));
+        resolve(result);
+      }
+    ).end(buffer);
+  });
 };
 
 const areMutualContacts = async (userId, contactId) => {
@@ -72,9 +114,68 @@ export const getUsers = async (req, res) => {
     for (const hiddenId of currentUser.hiddenContacts) {
       contactIds.delete(hiddenId.toString());
     }
-    const users = await User.find({ _id: { $in: [...contactIds] } })
-      .select('fullName email profilePic bio lastSeen');
-    return res.status(200).json(users);
+    const [users, unreadCounts, latestMessages] = await Promise.all([
+      User.find({ _id: { $in: [...contactIds] } })
+        .select('fullName email profilePic bio lastSeen'),
+      Message.aggregate([
+        {
+          $match: {
+            receiverId: req.user._id,
+            read: false,
+            messageRequestStatus: { $ne: 'pending' },
+            deletedAt: { $exists: false },
+            deletedFor: { $ne: req.user._id },
+          },
+        },
+        { $group: { _id: '$senderId', count: { $sum: 1 } } },
+      ]),
+      Message.aggregate([
+        {
+          $match: {
+            $or: [
+              { senderId: req.user._id, receiverId: { $in: [...contactIds] } },
+              { receiverId: req.user._id, senderId: { $in: [...contactIds] } },
+            ],
+            messageRequestStatus: { $ne: 'pending' },
+            deletedAt: { $exists: false },
+            deletedFor: { $ne: req.user._id },
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: {
+              $cond: [
+                { $eq: ['$senderId', req.user._id] },
+                '$receiverId',
+                '$senderId',
+              ],
+            },
+            latestMessage: {
+              $first: {
+                _id: '$_id',
+                text: '$text',
+                image: '$image',
+                video: '$video',
+                documentName: '$documentName',
+                senderId: '$senderId',
+                createdAt: '$createdAt',
+              },
+            },
+          },
+        },
+      ]),
+    ]);
+    const unreadBySender = new Map(unreadCounts.map(({ _id, count }) => [_id.toString(), count]));
+    const latestMessageByContact = new Map(latestMessages.map(({ _id, latestMessage }) => [
+      _id.toString(),
+      latestMessage,
+    ]));
+    return res.status(200).json(users.map((user) => ({
+      ...user.toObject(),
+      unreadCount: unreadBySender.get(user._id.toString()) || 0,
+      latestMessage: latestMessageByContact.get(user._id.toString()) || null,
+    })));
   } catch (error) {
     console.error('getUsers error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
@@ -155,8 +256,11 @@ export const addContact = async (req, res) => {
     }
 
     await ContactRequest.create({ sender: req.user._id, recipient: contact._id });
-    const contactSocketId = getReceiverSocketId(contact._id.toString());
-    if (contactSocketId) io.to(contactSocketId).emit('contactsUpdated');
+    emitToUser(contact._id.toString(), 'contactsUpdated');
+    emitToUser(contact._id.toString(), 'notification', {
+      type: 'contactRequest',
+      name: req.user.fullName,
+    });
 
     return res.status(201).json({
       message: `Contact request sent to ${contact.fullName}.`,
@@ -281,10 +385,8 @@ export const respondToMessageRequest = async (req, res) => {
       );
     }
 
-    const senderSocketId = getReceiverSocketId(senderId);
-    if (senderSocketId) io.to(senderSocketId).emit('contactsUpdated');
-    const recipientSocketId = getReceiverSocketId(req.user._id.toString());
-    if (recipientSocketId) io.to(recipientSocketId).emit('contactsUpdated');
+    emitToUser(senderId, 'contactsUpdated');
+    emitToUser(req.user._id.toString(), 'contactsUpdated');
 
     return res.status(200).json({
       message: accept ? 'Message request accepted.' : 'Message request declined.',
@@ -310,10 +412,12 @@ export const respondToContactRequest = async (req, res) => {
     request.acceptedAt = new Date();
     await request.save();
 
-    const senderSocketId = getReceiverSocketId(request.sender.toString());
-    if (senderSocketId) io.to(senderSocketId).emit('contactsUpdated');
-    const recipientSocketId = getReceiverSocketId(request.recipient.toString());
-    if (recipientSocketId) io.to(recipientSocketId).emit('contactsUpdated');
+    emitToUser(request.sender.toString(), 'contactsUpdated');
+    emitToUser(request.recipient.toString(), 'contactsUpdated');
+    emitToUser(request.sender.toString(), 'notification', {
+      type: 'contactAccepted',
+      name: req.user.fullName,
+    });
 
     return res.status(200).json({ message: 'Contact request accepted.' });
   } catch (error) {
@@ -333,8 +437,7 @@ export const declineContactRequest = async (req, res) => {
       status: 'pending',
     });
     if (!request) return res.status(404).json({ message: 'Pending contact request not found.' });
-    const senderSocketId = getReceiverSocketId(request.sender.toString());
-    if (senderSocketId) io.to(senderSocketId).emit('contactsUpdated');
+    emitToUser(request.sender.toString(), 'contactsUpdated');
     return res.status(200).json({ message: 'Contact request declined.' });
   } catch (error) {
     console.error('declineContactRequest error:', error.message);
@@ -432,8 +535,7 @@ export const getMessages = async (req, res) => {
       .populate('replyTo', REPLY_PREVIEW_FIELDS)
       .sort({ createdAt: 1 });
 
-    // Mark received messages as read (non-blocking)
-    Message.updateMany(
+    const readResult = await Message.updateMany(
       {
         senderId: targetId,
         receiverId: myId,
@@ -441,11 +543,43 @@ export const getMessages = async (req, res) => {
         messageRequestStatus: { $ne: 'pending' },
       },
       { read: true }
-    ).catch((err) => console.error('markRead error:', err.message));
+    );
+    if (readResult.modifiedCount > 0) {
+      emitToUser(myId.toString(), 'messagesRead', { senderId: targetId.toString() });
+    }
 
     return res.status(200).json(messages.map((message) => serializeMessage(message, myId)));
   } catch (error) {
     console.error('getMessages error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const markMessagesRead = async (req, res) => {
+  try {
+    const myId = req.user._id;
+    const senderId = req.params.userId;
+    if (!mongoose.isValidObjectId(senderId) || !(await areMutualContacts(myId, senderId))) {
+      return res.status(403).json({ message: 'You can only mark a contact conversation as read.' });
+    }
+
+    const result = await Message.updateMany(
+      {
+        senderId,
+        receiverId: myId,
+        read: false,
+        messageRequestStatus: { $ne: 'pending' },
+        deletedAt: { $exists: false },
+        deletedFor: { $ne: myId },
+      },
+      { $set: { read: true } }
+    );
+    if (result.modifiedCount > 0) {
+      emitToUser(myId.toString(), 'messagesRead', { senderId: senderId.toString() });
+    }
+    return res.status(200).json({ markedRead: result.modifiedCount });
+  } catch (error) {
+    console.error('markMessagesRead error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };
@@ -527,14 +661,16 @@ export const sendMessage = async (req, res) => {
     let documentUrl;
     if (image || video || document) {
       const media = image || video || document;
-      if (media.length > MAX_IMAGE_BASE64_LENGTH) {
+      if (typeof media !== 'string' || media.length > MAX_ATTACHMENT_BASE64_LENGTH) {
         return res.status(400).json({ message: 'Attachment exceeds 5 MB limit.' });
       }
 
-      const uploadResult = await cloudinary.uploader.upload(media, {
-        folder: 'nexus-chat/messages',
-        resource_type: document ? 'raw' : image ? 'image' : 'video',
-      });
+      const uploadResult = document
+        ? await uploadRawDocument(document, documentName.trim())
+        : await cloudinary.uploader.upload(media, {
+            folder: 'nexus-chat/messages',
+            resource_type: image ? 'image' : 'video',
+          });
 
       if (image) imageUrl = uploadResult.secure_url;
       else if (video) videoUrl = uploadResult.secure_url;
@@ -554,16 +690,22 @@ export const sendMessage = async (req, res) => {
     });
     await message.populate('replyTo', REPLY_PREVIEW_FIELDS);
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId && isMessageRequest) {
-      io.to(receiverSocketId).emit('contactsUpdated');
-    } else if (receiverSocketId) {
-      io.to(receiverSocketId).emit('newMessage', serializeMessage(message, receiverId));
+    if (isMessageRequest) {
+      emitToUser(receiverId, 'contactsUpdated');
+      emitToUser(receiverId, 'notification', {
+        type: 'messageRequest',
+        name: req.user.fullName,
+      });
+    } else {
+      emitToConversation(message, 'newMessage');
     }
 
     return res.status(201).json(serializeMessage(message, senderId));
   } catch (error) {
     console.error('sendMessage error:', error.message);
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ message: error.message });
+    }
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };
@@ -592,8 +734,7 @@ export const editMessage = async (req, res) => {
     message.editedAt = new Date();
     await message.save();
 
-    const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-    if (receiverSocketId) io.to(receiverSocketId).emit('messageEdited', serializeMessage(message, message.receiverId));
+    emitToConversation(message, 'messageEdited');
     return res.status(200).json(serializeMessage(message, req.user._id));
   } catch (error) {
     console.error('editMessage error:', error.message);
@@ -737,11 +878,10 @@ export const forwardMessage = async (req, res) => {
       messageRequestStatus: isMessageRequest ? 'pending' : undefined,
     });
     const serialized = serializeMessage(forwarded, req.user._id);
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId && isMessageRequest) {
-      io.to(receiverSocketId).emit('contactsUpdated');
-    } else if (receiverSocketId) {
-      io.to(receiverSocketId).emit('newMessage', serializeMessage(forwarded, receiverId));
+    if (isMessageRequest) {
+      emitToUser(receiverId, 'contactsUpdated');
+    } else {
+      emitToConversation(forwarded, 'newMessage');
     }
     return res.status(201).json(serialized);
   } catch (error) {

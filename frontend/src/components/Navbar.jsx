@@ -14,7 +14,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="navbar bg-base-200 border-b border-base-300 sticky top-0 z-50 px-4 h-16 min-h-16">
+    <nav className="navbar app-navbar bg-base-200 border-b border-base-300 sticky top-0 z-50 px-2 sm:px-4">
       {/* Left — brand */}
       <div className="flex-1">
         <Link
@@ -25,21 +25,21 @@ export default function Navbar() {
           <img
             src="/chatkaro-logo.png"
             alt=""
-            className="w-8 h-8 object-contain group-hover:scale-105 transition-transform"
+            className="brand-logo w-8 h-8 object-contain group-hover:scale-105 transition-transform"
           />
-          <span className="font-bold text-lg tracking-tight hidden sm:inline">
+          <span className="font-bold text-base sm:text-lg tracking-tight">
             ChatKaro
           </span>
         </Link>
       </div>
 
       {/* Right — actions */}
-      <div className="flex-none gap-1">
+      <div className="flex-none gap-0 sm:gap-1">
         {authUser ? (
           <>
          <Link
               to="/profile"
-              className="btn btn-ghost btn-sm gap-2"
+              className="btn btn-ghost btn-sm min-h-10 min-w-10 gap-2"
               aria-label={t('Profile')}
             >
               <User size={18} />
@@ -47,7 +47,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/settings"
-              className="btn btn-ghost btn-sm gap-2"
+              className="btn btn-ghost btn-sm min-h-10 min-w-10 gap-2"
               aria-label={t('Settings')}
             >
               <Settings size={18} />
@@ -55,7 +55,7 @@ export default function Navbar() {
             </Link>
             <button
               onClick={handleLogout}
-              className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/10"
+              className="btn btn-ghost btn-sm min-h-10 min-w-10 gap-2 text-error hover:bg-error/10"
               aria-label={t('Logout')}
             >
               <LogOut size={18} />
