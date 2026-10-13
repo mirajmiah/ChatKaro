@@ -6,6 +6,7 @@ import {
   logout,
   checkAuth,
   updateProfile,
+  updateBio,
   updateName,
   forgotPassword,
   resetPassword,
@@ -22,6 +23,7 @@ router.post('/logout', logout);
 router.put('/update-name', protectRoute, updateName);
 router.get('/check', protectRoute, checkAuth);
 router.put('/update-profile', protectRoute, updateProfile);
+router.put('/update-bio', protectRoute, updateBio);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', authLimiter, resetPassword);
 

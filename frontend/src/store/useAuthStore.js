@@ -80,6 +80,17 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  updateBio: async (bio) => {
+    try {
+      const res = await api.put('/auth/update-bio', { bio });
+      set((state) => ({ authUser: { ...state.authUser, bio: res.data.bio } }));
+      toast.success('About me updated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to update About me');
+      throw err;
+    }
+  },
+
   updateName: async (fullName) => {
     try {
       const res = await api.put('/auth/update-name', { fullName });

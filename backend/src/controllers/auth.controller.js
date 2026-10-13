@@ -85,6 +85,7 @@ export const signup = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      bio: user.bio,
       lastSeen: user.lastSeen,
       createdAt: user.createdAt,
     });
@@ -120,6 +121,7 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      bio: user.bio,
       lastSeen: user.lastSeen,
       createdAt: user.createdAt,
     });
@@ -175,6 +177,7 @@ export const googleLogin = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      bio: user.bio,
       lastSeen: user.lastSeen,
       createdAt: user.createdAt,
     });
@@ -201,6 +204,23 @@ export const updateProfile = async (req, res) => {
       return res.status(400).json({ message: 'Profile picture is required.' });
     }
 
+    if (typeof profilePic !== 'string' || profilePic.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ message: 'Profile picture must be smaller than 10MB.' });
+    }
+
+    if (/^https?:\/\//i.test(profilePic)) {
+      try {
+        const imageUrl = new URL(profilePic);
+        if (imageUrl.protocol !== 'https:' || imageUrl.username || imageUrl.password) {
+          return res.status(400).json({ message: 'Enter a valid secure image URL.' });
+        }
+      } catch {
+        return res.status(400).json({ message: 'Enter a valid secure image URL.' });
+      }
+    } else if (!profilePic.startsWith('data:image/')) {
+      return res.status(400).json({ message: 'Choose an image file or enter a secure image URL.' });
+    }
+
     const uploadResult = await cloudinary.uploader.upload(profilePic, {
       folder: 'nexus-chat/avatars',
       resource_type: 'image',
@@ -218,6 +238,31 @@ export const updateProfile = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };
+
+export const updateBio = async (req, res) => {
+  try {
+    const bio = typeof req.body.bio === 'string' ? req.body.bio.trim() : null;
+
+    if (bio === null) {
+      return res.status(400).json({ message: 'About me must be text.' });
+    }
+    if (bio.length > 600) {
+      return res.status(400).json({ message: 'About me must be 600 characters or fewer.' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { bio },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error('updateBio error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
 export const updateName = async (req, res) => {
   try {
     const { fullName } = req.body;

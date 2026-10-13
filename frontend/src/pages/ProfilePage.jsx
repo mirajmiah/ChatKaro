@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 
 export default function ProfilePage() {
-  const { authUser, updateProfile, updateName, onlineUsers } = useAuthStore();
+  const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef(null);
 
   const isOnline = onlineUsers.includes(authUser?._id);
@@ -35,6 +37,8 @@ export default function ProfilePage() {
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(authUser?.fullName || '');
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [editedBio, setEditedBio] = useState(authUser?.bio || '');
 
   const handleSaveName = async () => {
     const name = editedName.trim();
@@ -46,6 +50,39 @@ export default function ProfilePage() {
       setIsEditingName(false);
     } finally {
       setIsSavingName(false);
+    }
+  };
+
+  const handleSaveBio = async () => {
+    setIsSavingBio(true);
+    try {
+      await updateBio(editedBio);
+      setIsEditingBio(false);
+    } finally {
+      setIsSavingBio(false);
+    }
+  };
+
+  const handleSaveImageUrl = async (event) => {
+    event.preventDefault();
+    const value = imageUrl.trim();
+    try {
+      const parsedUrl = new URL(value);
+      if (parsedUrl.protocol !== 'https:') {
+        alert('Use a secure HTTPS image link.');
+        return;
+      }
+    } catch {
+      alert('Enter a valid image link.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await updateProfile({ profilePic: value });
+      setImageUrl('');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -145,6 +182,33 @@ export default function ProfilePage() {
               </span>
             </div>
 
+            <form onSubmit={handleSaveImageUrl} className="w-full space-y-2">
+              <label htmlFor="profile-image-url" className="text-sm font-medium">
+                Or use an image link
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="profile-image-url"
+                  type="url"
+                  value={imageUrl}
+                  onChange={(event) => setImageUrl(event.target.value)}
+                  placeholder="https://example.com/photo.jpg"
+                  className="input input-bordered input-sm min-w-0 flex-1"
+                  aria-label="Profile image URL"
+                />
+                <button
+                  type="submit"
+                  disabled={isUploading || !imageUrl.trim()}
+                  className="btn btn-primary btn-sm"
+                >
+                  {isUploading ? <span className="loading loading-spinner loading-xs" /> : <><ImageIcon size={15} /> Use link</>}
+                </button>
+              </div>
+              <p className="text-xs text-base-content/50">
+                The link must be public and use HTTPS. Uploaded photos must be under 5 MB.
+              </p>
+            </form>
+
             {/* User info fields */}
             <div className="w-full space-y-4">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
@@ -200,6 +264,67 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="rounded-lg bg-base-300/50 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-base-content/50">
+                    About me
+                  </p>
+                  {!isEditingBio && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditedBio(authUser?.bio || '');
+                        setIsEditingBio(true);
+                      }}
+                      className="btn btn-ghost btn-xs"
+                      aria-label="Edit About me"
+                    >
+                      <Pencil size={14} />
+                      <span>Edit</span>
+                    </button>
+                  )}
+                </div>
+                {isEditingBio ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editedBio}
+                      onChange={(event) => setEditedBio(event.target.value)}
+                      className="textarea textarea-bordered w-full"
+                      rows={5}
+                      maxLength={600}
+                      aria-label="About me"
+                      placeholder="Tell your contacts a little about yourself"
+                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-base-content/50">{editedBio.length}/600</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveBio}
+                          disabled={isSavingBio}
+                          className="btn btn-primary btn-sm"
+                        >
+                          {isSavingBio ? <span className="loading loading-spinner loading-xs" /> : <><Check size={15} /> Save</>}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingBio(false)}
+                          disabled={isSavingBio}
+                          className="btn btn-ghost btn-sm"
+                        >
+                          <X size={15} />
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {authUser?.bio || <span className="text-base-content/50">Add a short introduction about yourself.</span>}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
