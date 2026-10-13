@@ -208,8 +208,12 @@ export default function Sidebar() {
     }
   };
 
+  const onlineContactCount = users.filter((user) => (
+    String(user._id) !== String(authUser?._id)
+    && onlineUsers.includes(String(user._id))
+  )).length;
   const filtered = onlineOnly
-    ? users.filter((u) => onlineUsers.includes(u._id))
+    ? users.filter((user) => onlineUsers.includes(String(user._id)))
     : users;
   
   const visibleUsers = filtered;
@@ -310,7 +314,7 @@ export default function Sidebar() {
           </span>
           {onlineOnly && (
             <span className="badge badge-success badge-outline badge-xs">
-              {t('{count} online', { count: onlineUsers.length })}
+              {t('{count} online', { count: onlineContactCount })}
             </span>
           )}
         </label>
