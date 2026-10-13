@@ -86,7 +86,7 @@ export const searchContact = async (req, res) => {
     const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
     if (!email) return res.status(400).json({ message: 'Enter an email address to search.' });
 
-    const contact = await User.findOne({ email }).select('fullName email profilePic bio lastSeen contacts');
+    const contact = await User.findOne({ email }).select('fullName email profilePic lastSeen contacts');
     if (!contact) return res.status(404).json({ message: 'No account was found with that email.' });
     if (contact._id.toString() === req.user._id.toString()) {
       return res.status(400).json({ message: 'That email belongs to your account.' });
@@ -132,7 +132,7 @@ export const addContact = async (req, res) => {
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     if (!email) return res.status(400).json({ message: 'Enter the contact email address.' });
 
-    const contact = await User.findOne({ email }).select('fullName email profilePic bio lastSeen');
+    const contact = await User.findOne({ email }).select('fullName email profilePic lastSeen');
     if (!contact) return res.status(404).json({ message: 'No account was found with that email.' });
     if (contact._id.toString() === req.user._id.toString()) {
       return res.status(400).json({ message: 'You cannot add your own account as a contact.' });
