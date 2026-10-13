@@ -204,21 +204,12 @@ export const updateProfile = async (req, res) => {
       return res.status(400).json({ message: 'Profile picture is required.' });
     }
 
-    if (typeof profilePic !== 'string' || profilePic.length > 10 * 1024 * 1024) {
-      return res.status(400).json({ message: 'Profile picture must be smaller than 10MB.' });
+    if (typeof profilePic !== 'string' || !profilePic.startsWith('data:image/')) {
+      return res.status(400).json({ message: 'Choose a valid image file.' });
     }
 
-    if (/^https?:\/\//i.test(profilePic)) {
-      try {
-        const imageUrl = new URL(profilePic);
-        if (imageUrl.protocol !== 'https:' || imageUrl.username || imageUrl.password) {
-          return res.status(400).json({ message: 'Enter a valid secure image URL.' });
-        }
-      } catch {
-        return res.status(400).json({ message: 'Enter a valid secure image URL.' });
-      }
-    } else if (!profilePic.startsWith('data:image/')) {
-      return res.status(400).json({ message: 'Choose an image file or enter a secure image URL.' });
+    if (profilePic.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ message: 'Profile picture must be smaller than 5MB.' });
     }
 
     const uploadResult = await cloudinary.uploader.upload(profilePic, {

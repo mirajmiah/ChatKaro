@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 
@@ -8,7 +8,6 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef(null);
 
   const isOnline = onlineUsers.includes(authUser?._id);
@@ -60,29 +59,6 @@ export default function ProfilePage() {
       setIsEditingBio(false);
     } finally {
       setIsSavingBio(false);
-    }
-  };
-
-  const handleSaveImageUrl = async (event) => {
-    event.preventDefault();
-    const value = imageUrl.trim();
-    try {
-      const parsedUrl = new URL(value);
-      if (parsedUrl.protocol !== 'https:') {
-        alert('Use a secure HTTPS image link.');
-        return;
-      }
-    } catch {
-      alert('Enter a valid image link.');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      await updateProfile({ profilePic: value });
-      setImageUrl('');
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -181,33 +157,6 @@ export default function ProfilePage() {
                 {isOnline ? 'Online' : 'Offline'}
               </span>
             </div>
-
-            <form onSubmit={handleSaveImageUrl} className="w-full space-y-2">
-              <label htmlFor="profile-image-url" className="text-sm font-medium">
-                Or use an image link
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="profile-image-url"
-                  type="url"
-                  value={imageUrl}
-                  onChange={(event) => setImageUrl(event.target.value)}
-                  placeholder="https://example.com/photo.jpg"
-                  className="input input-bordered input-sm min-w-0 flex-1"
-                  aria-label="Profile image URL"
-                />
-                <button
-                  type="submit"
-                  disabled={isUploading || !imageUrl.trim()}
-                  className="btn btn-primary btn-sm"
-                >
-                  {isUploading ? <span className="loading loading-spinner loading-xs" /> : <><ImageIcon size={15} /> Use link</>}
-                </button>
-              </div>
-              <p className="text-xs text-base-content/50">
-                The link must be public and use HTTPS. Uploaded photos must be under 5 MB.
-              </p>
-            </form>
 
             {/* User info fields */}
             <div className="w-full space-y-4">
