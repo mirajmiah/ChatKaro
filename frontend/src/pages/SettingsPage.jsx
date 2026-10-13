@@ -1,6 +1,81 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Check } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, Palette } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore.js';
+
+const GUIDE_LANGUAGES = [
+  { id: 'en', label: 'English' },
+  { id: 'bn', label: 'বাংলা' },
+  { id: 'hi', label: 'हिन्दी' },
+];
+
+const USAGE_GUIDE = {
+  en: {
+    title: 'How to use ChatKaro',
+    description: 'Follow these steps to find people and start chatting.',
+    steps: [
+      {
+        title: 'Find someone',
+        description: 'On the Chats page, search using the person’s exact account email, then choose Search contact.',
+      },
+      {
+        title: 'Send a contact request',
+        description: 'Choose Send request. The other person must accept it before you can chat normally.',
+      },
+      {
+        title: 'Start a conversation',
+        description: 'Once connected, select them from your contacts. Type a message and press Enter to send; use Shift + Enter for a new line. Use the paperclip to attach an image, video, or supported file up to 5 MB.',
+      },
+      {
+        title: 'Review incoming requests',
+        description: 'Accept or decline contact requests in Contact requests. You can preview messages in Message requests before accepting or declining them.',
+      },
+    ],
+  },
+  bn: {
+    title: 'ChatKaro কীভাবে ব্যবহার করবেন',
+    description: 'মানুষ খুঁজে তাদের সঙ্গে চ্যাট শুরু করতে নিচের ধাপগুলো অনুসরণ করুন।',
+    steps: [
+      {
+        title: 'কাউকে খুঁজুন',
+        description: 'Chats পেজে গিয়ে সেই ব্যক্তির অ্যাকাউন্টের সঠিক ইমেইল লিখুন, তারপর Search contact নির্বাচন করুন।',
+      },
+      {
+        title: 'কন্ট্যাক্ট অনুরোধ পাঠান',
+        description: 'Send request নির্বাচন করুন। সাধারণভাবে চ্যাট করার আগে অন্য ব্যক্তিকে অনুরোধটি গ্রহণ করতে হবে।',
+      },
+      {
+        title: 'কথোপকথন শুরু করুন',
+        description: 'সংযুক্ত হওয়ার পর কন্ট্যাক্ট তালিকা থেকে ব্যক্তিকে নির্বাচন করুন। বার্তা লিখে Enter চাপলে পাঠানো হবে; নতুন লাইন দিতে Shift + Enter চাপুন। পেপারক্লিপ দিয়ে ৫ MB পর্যন্ত ছবি, ভিডিও বা সমর্থিত ফাইল পাঠাতে পারবেন।',
+      },
+      {
+        title: 'আসা অনুরোধগুলো দেখুন',
+        description: 'Contact requests থেকে কন্ট্যাক্ট অনুরোধ গ্রহণ বা প্রত্যাখ্যান করুন। Message requests-এর বার্তা গ্রহণ বা প্রত্যাখ্যান করার আগে দেখে নিতে পারবেন।',
+      },
+    ],
+  },
+  hi: {
+    title: 'ChatKaro का उपयोग कैसे करें',
+    description: 'लोगों को खोजने और उनसे चैट शुरू करने के लिए ये चरण अपनाएँ।',
+    steps: [
+      {
+        title: 'किसी को खोजें',
+        description: 'Chats पेज पर उस व्यक्ति के खाते का सही ईमेल खोजें, फिर Search contact चुनें।',
+      },
+      {
+        title: 'कॉन्टैक्ट अनुरोध भेजें',
+        description: 'Send request चुनें। सामान्य रूप से चैट करने से पहले दूसरे व्यक्ति को अनुरोध स्वीकार करना होगा।',
+      },
+      {
+        title: 'बातचीत शुरू करें',
+        description: 'जुड़ने के बाद अपनी कॉन्टैक्ट सूची से उस व्यक्ति को चुनें। संदेश लिखकर भेजने के लिए Enter दबाएँ; नई पंक्ति के लिए Shift + Enter दबाएँ। पेपरक्लिप से 5 MB तक की तस्वीर, वीडियो या समर्थित फ़ाइल भेजें।',
+      },
+      {
+        title: 'आने वाले अनुरोध देखें',
+        description: 'Contact requests में कॉन्टैक्ट अनुरोध स्वीकार या अस्वीकार करें। Message requests के संदेश स्वीकार या अस्वीकार करने से पहले देख सकते हैं।',
+      },
+    ],
+  },
+};
 
 const THEMES = [
   { id: 'night', label: 'Night', primary: '#38bdf8', bg: '#0f1729', text: '#cbd5e1' },
@@ -54,7 +129,8 @@ function ThemeSwatch({ theme, isSelected, onClick }) {
 }
 
 export default function SettingsPage() {
-  const { theme, setTheme } = useSettingsStore();
+  const { theme, setTheme, guideLanguage, setGuideLanguage } = useSettingsStore();
+  const guide = USAGE_GUIDE[guideLanguage] ?? USAGE_GUIDE.en;
 
   const handleThemeChange = (themeId) => {
     setTheme(themeId);
@@ -121,6 +197,56 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+
+          <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="usage-guide-title">
+            <div className="card-body gap-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                    <BookOpen size={20} className="text-primary" />
+                  </span>
+                  <div>
+                    <h2 id="usage-guide-title" className="text-lg font-semibold">
+                      {guide.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-base-content/60">
+                      {guide.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div role="group" aria-label="Usage guide language" className="join self-start">
+                  {GUIDE_LANGUAGES.map((language) => (
+                    <button
+                      key={language.id}
+                      type="button"
+                      className={`join-item btn btn-sm ${guideLanguage === language.id ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setGuideLanguage(language.id)}
+                      aria-pressed={guideLanguage === language.id}
+                    >
+                      {language.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <ol className="grid gap-4 sm:grid-cols-2">
+                {guide.steps.map((step, index) => (
+                  <li key={step.title} className="flex items-start gap-3 rounded-xl bg-base-100 p-4">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <h3 className="font-medium">{step.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-base-content/70">
+                        {step.description}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
         </div>
       </div>
     </div>
