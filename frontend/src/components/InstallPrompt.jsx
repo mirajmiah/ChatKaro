@@ -10,15 +10,27 @@ function isAndroid() {
 export default function InstallPrompt({ authUser }) {
   const [visible, setVisible] = useState(false);
   const [downloadStarted, setDownloadStarted] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
-    setVisible(Boolean(authUser) && isAndroid());
+    const userId = authUser?._id;
+    const dismissedForUser = userId
+      ? window.localStorage.getItem(`chatkaro-hide-install-prompt-${userId}`) === 'true'
+      : false;
+
+    setVisible(Boolean(userId) && isAndroid() && !dismissedForUser);
     setDownloadStarted(false);
+    setDontShowAgain(false);
   }, [authUser?._id]);
 
   if (!authUser || !isAndroid() || !visible) return null;
 
-  const dismiss = () => setVisible(false);
+  const dismiss = () => {
+    if (dontShowAgain && authUser?._id) {
+      window.localStorage.setItem(`chatkaro-hide-install-prompt-${authUser._id}`, 'true');
+    }
+    setVisible(false);
+  };
 
   return (
     <div
@@ -64,6 +76,15 @@ export default function InstallPrompt({ authUser }) {
               If Chrome stays at 100%, open Chrome Downloads and retry from the main Chrome browser. The APK is published on the official ChatKaro GitHub release.
             </p>
           )}
+          <label className="flex cursor-pointer items-center justify-center gap-2 px-2 py-1 text-sm opacity-80">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-primary checkbox-sm"
+              checked={dontShowAgain}
+              onChange={(event) => setDontShowAgain(event.target.checked)}
+            />
+            Don't show me again
+          </label>
           <button type="button" onClick={dismiss} className="btn btn-ghost w-full">
             Maybe later
           </button>
