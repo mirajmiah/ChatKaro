@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, UserRound, IdCard, Languages, Palette, BookOpen, Code2, LogOut, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -92,6 +92,7 @@ export default function Navbar() {
 
                 <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-2">
                   {items.map(({ label, description, icon: Icon, to }) => (
+                    <Fragment key={label}>
                     <Link
                       key={label}
                       to={to}
@@ -117,6 +118,7 @@ export default function Navbar() {
                         </span>
                       </button>
                     )}
+                    </Fragment>
                   ))}
                 </div>
 
