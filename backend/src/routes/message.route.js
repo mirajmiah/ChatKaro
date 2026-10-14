@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import {
   getUsers,
   searchContact,
@@ -36,14 +36,13 @@ router.patch('/contacts/requests/:requestId/accept', protectRoute, respondToCont
 router.delete('/contacts/requests/:requestId', protectRoute, declineContactRequest);
 router.post('/contacts', protectRoute, addContact);
 router.delete('/contacts/:userId', protectRoute, removeContact);
+
+// Use a distinct path for clearing a conversation so it cannot be mistaken for a message ID.
+router.delete('/chat/:userId', protectRoute, deleteChat);
 router.get('/:messageId/document', protectRoute, getMessageDocument);
 router.get('/:userId', protectRoute, getMessages);
 router.patch('/:userId/read', protectRoute, markMessagesRead);
-
-// Keep the message-specific DELETE route before the generic chat-history route.
-// Otherwise DELETE /:userId captures DELETE /:messageId?scope=everyone.
 router.delete('/:messageId', protectRoute, deleteMessage);
-router.delete('/:userId', protectRoute, deleteChat);
 
 router.post('/send/:userId', protectRoute, sendMessage);
 router.post('/:messageId/forward', protectRoute, forwardMessage);
