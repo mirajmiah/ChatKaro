@@ -237,7 +237,7 @@ export default function SettingsPage() {
               />
             </div>
           </div>
-
+        </div>
         )}
 
           {showLanguage && <section id="app-language" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="app-language-title">
