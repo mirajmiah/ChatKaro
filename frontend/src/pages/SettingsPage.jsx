@@ -155,6 +155,13 @@ export default function SettingsPage() {
   const sectionTitle = showTheme ? t('App theme') : showLanguage ? t('App language') : showHowToUse ? t('How to Use') : t('About Developer');
   const [isDeveloperImageOpen, setIsDeveloperImageOpen] = useState(false);
 
+  // Make the device/browser Back button return to Chats from Settings.
+  useEffect(() => {
+    const handleBrowserBack = () => window.location.replace('/');
+    window.addEventListener('popstate', handleBrowserBack);
+    return () => window.removeEventListener('popstate', handleBrowserBack);
+  }, []);
+
   useEffect(() => {
     if (!location.hash) return;
     document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
