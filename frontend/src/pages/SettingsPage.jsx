@@ -188,7 +188,7 @@ export default function SettingsPage() {
 </div>
 
         <div className="card bg-base-200 shadow-xl border border-base-300">
-          <div className="card-body gap-6">
+          <div id="app-theme" className="card-body gap-6 scroll-mt-24">
             <div>
               <h2 className="text-lg font-semibold mb-1">{t('Theme')}</h2>
               <p className="text-sm text-base-content/60 mb-4">
@@ -225,7 +225,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="app-language-title">
+          <section id="app-language" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="app-language-title">
             <div className="card-body gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -255,7 +255,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="usage-guide-title">
+          <section id="how-to-use" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="usage-guide-title">
             <div className="card-body gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
@@ -292,7 +292,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <section className="card bg-base-200 shadow-xl border border-base-300 mt-6" aria-labelledby="about-developer-title">
+          <section id="about-developer" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="about-developer-title">
             <div className="card-body gap-5">
               <h2 id="about-developer-title" className="text-lg font-semibold">
                 {guide.aboutDeveloperTitle}
