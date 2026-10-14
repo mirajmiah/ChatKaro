@@ -53,7 +53,7 @@ export default function App() {
         <Route path="/settings" element={authUser ? <SettingsPage /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-      <InstallPrompt />
+      <InstallPrompt authUser={authUser} />
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
     </div>
   );
