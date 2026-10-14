@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, UserRound, ContactRound, Languages, Palette, BookOpen, Code2, LogOut, MessageCircle } from 'lucide-react';
+import { Menu, X, ChevronDown, UserRound, ContactRound, Languages, Palette, BookOpen, Code2, LogOut, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
@@ -10,9 +10,10 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountExpanded, setAccountExpanded] = useState(false);
   const menuRef = useRef(null);
 
-  useEffect(() => setMenuOpen(false), [location.pathname, location.hash]);
+  useEffect(() => { setMenuOpen(false); setAccountExpanded(false); }, [location.pathname, location.hash]);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -93,6 +94,45 @@ export default function Navbar() {
                 <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-2">
                   {items.map(({ label, description, icon: Icon, to }) => (
                     <Fragment key={label}>
+                    {label === t('Account') ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setAccountExpanded((expanded) => !expanded)}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                          aria-expanded={accountExpanded}
+                        >
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon size={20} /></span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold">{label}</span>
+                            <span className="mt-0.5 block text-xs leading-snug opacity-60">{description}</span>
+                          </span>
+                          <ChevronDown size={18} className={accountExpanded ? "rotate-180 transition-transform" : "transition-transform"} />
+                        </button>
+                        {accountExpanded && (
+                          <div className="ml-5 border-l-2 border-base-300 py-1 pl-3">
+                            <Link
+                              to={to}
+                              onClick={() => setMenuOpen(false)}
+                              className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-base-200"
+                            >
+                              {t('Account details')}
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={handleLogout}
+                              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-error transition-colors hover:bg-error/10"
+                            >
+                              <LogOut size={18} />
+                              <span>
+                                <span className="block text-sm font-semibold">{t('Logout')}</span>
+                                <span className="block text-xs opacity-65">{t('Sign out of your ChatKaro account')}</span>
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
                     <Link
                       key={label}
                       to={to}
@@ -105,18 +145,6 @@ export default function Navbar() {
                         <span className="mt-0.5 block text-xs leading-snug opacity-60">{description}</span>
                       </span>
                     </Link>
-                    {label === t('Account') && (
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-error transition-colors hover:bg-error/10"
-                      >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error/10"><LogOut size={20} /></span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold">{t('Logout')}</span>
-                          <span className="mt-0.5 block text-xs leading-snug opacity-65">{t('Sign out of your ChatKaro account')}</span>
-                        </span>
-                      </button>
                     )}
                     </Fragment>
                   ))}
