@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Download, X, Smartphone, ShieldCheck } from 'lucide-react';
 
-const APK_URL = 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/ChatKaro.apk';
+const APK_URL = 'https://github.com/mirajmiah/ChatKaro/releases/download/android-build-4/ChatKaro.apk';
 
 function isAndroid() {
   return /Android/i.test(window.navigator.userAgent);
@@ -54,15 +54,13 @@ export default function InstallPrompt({ authUser }) {
             href={APK_URL}
             onClick={() => setDownloadStarted(true)}
             className="btn btn-primary flex w-full gap-2"
-            target="_blank"
-            rel="noopener noreferrer"
           >
             <Download size={18} />
             Download Android APK
           </a>
           {downloadStarted && (
             <p className="text-center text-xs opacity-70">
-              If the download does not start, the latest APK release may not be published yet. Try again later.
+              If Chrome stays at 100%, open Chrome Downloads and retry from the main Chrome browser. The APK is published on the official ChatKaro GitHub release.
             </p>
           )}
           <button type="button" onClick={dismiss} className="btn btn-ghost w-full">
