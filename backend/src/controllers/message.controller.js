@@ -242,20 +242,30 @@ export const addContact = async (req, res) => {
       return res.status(400).json({ message: 'You cannot add your own account as a contact.' });
     }
 
-    if (await areMutualContacts(req.user._id, contact._id)) {
+    const isHidden = await hasHiddenConnection(req.user._id, contact._id);
+    if (await areMutualContacts(req.user._id, contact._id) && !isHidden) {
       return res.status(409).json({ message: 'You are already connected.' });
     }
-    const existingRequest = await ContactRequest.findOne({
+
+    let existingRequest = await ContactRequest.findOne({
       $or: [
         { sender: req.user._id, recipient: contact._id },
         { sender: contact._id, recipient: req.user._id },
       ],
     });
-    if (existingRequest) {
+
+    if (existingRequest?.status === 'pending') {
       if (existingRequest.sender.toString() !== req.user._id.toString()) {
         return res.status(409).json({ message: 'This person already sent you a request. Accept it from your incoming requests.' });
       }
       return res.status(409).json({ message: 'Your contact request is already pending.' });
+    }
+
+    // Removing a contact hides the old connection. Allow a fresh request to reconnect.
+    // Replace any old accepted request, and clear the hidden flag for the recipient only
+    // after they accept the new request.
+    if (existingRequest) {
+      await ContactRequest.deleteOne({ _id: existingRequest._id });
     }
 
     await ContactRequest.create({ sender: req.user._id, recipient: contact._id });
