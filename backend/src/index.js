@@ -17,6 +17,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const httpServer = http.createServer(app);
 
+// Render runs behind a reverse proxy. Trust the first proxy hop so
+// express-rate-limit can determine client IPs correctly in production.
+if (process.env.RENDER) {
+  app.set('trust proxy', 1);
+}
+
 // Initialise Socket.IO before request handlers
 initSocket(httpServer);
 
