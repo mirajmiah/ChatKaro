@@ -1,0 +1,59 @@
+name: Build and publish ChatKaro Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: |
+          gradle --version
+          gradle --no-daemon assembleDebug
+
+      - name: Prepare APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk ../ChatKaro.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChatKaro-Android-APK
+          path: ChatKaro.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish APK GitHub Release
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" ChatKaro.apk \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "ChatKaro Android APK ${GITHUB_RUN_NUMBER}" \
+            --notes "Automated Android APK build from commit ${GITHUB_SHA}. This is a debug-signed APK for testing. Android may show a warning when installing apps from outside the Play Store." \
+            --latest
