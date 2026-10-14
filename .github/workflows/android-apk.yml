@@ -27,13 +27,16 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Build debug APK
-        run: |
-          gradle --version
-          gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug
 
       - name: Prepare APK
         run: cp app/build/outputs/apk/debug/app-debug.apk ../ChatKaro.apk
@@ -55,5 +58,5 @@ jobs:
           gh release create "$TAG" ChatKaro.apk \
             --repo "${GITHUB_REPOSITORY}" \
             --title "ChatKaro Android APK ${GITHUB_RUN_NUMBER}" \
-            --notes "Automated Android APK build from commit ${GITHUB_SHA}. This is a debug-signed APK for testing. Android may show a warning when installing apps from outside the Play Store." \
+            --notes "Automated Android APK build from commit ${GITHUB_SHA}. This debug-signed APK is for testing. A production release should use a protected signing key." \
             --latest
