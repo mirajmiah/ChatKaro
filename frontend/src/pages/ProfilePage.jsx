@@ -287,7 +287,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
+              <div id="account" className="scroll-mt-24 flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
                 <Mail size={18} className="text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
