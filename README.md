@@ -39,7 +39,7 @@ A production-ready, full-stack real-time chat application built with React 18, N
 ## Project Structure
 
 ```
-nexus-chat/
+ChatKaro/
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/     # Request handlers
