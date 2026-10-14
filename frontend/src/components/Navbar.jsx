@@ -70,27 +70,12 @@ export default function Navbar() {
 
           {menuOpen && (
             <>
-              <button type="button" aria-label={t('Close menu')} className="fixed inset-0 z-40 cursor-default bg-black/30 sm:bg-transparent" onClick={() => setMenuOpen(false)} />
               <section
                 id="chatkaro-account-menu"
-                className="absolute right-0 top-[calc(100%+0.6rem)] z-50 w-[min(21rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-base-300 bg-base-100 text-base-content shadow-2xl"
+                className="absolute right-0 top-[calc(100%+0.35rem)] z-50 w-[min(17rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border border-base-300 bg-base-100 text-base-content shadow-xl"
                 aria-label={t('Account and app menu')}
               >
-                <div className="flex items-center gap-3 border-b border-base-300 bg-base-200/70 p-4">
-                  <div className="avatar placeholder">
-                    <div className="h-12 w-12 overflow-hidden rounded-full bg-primary text-primary-content">
-                      {authUser.profilePic
-                        ? <img src={authUser.profilePic} alt="" className="h-full w-full object-cover" />
-                        : <span className="text-lg font-semibold">{(authUser.fullName || '?').trim().charAt(0).toUpperCase()}</span>}
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{authUser.fullName || t('ChatKaro user')}</p>
-                    <p className="truncate text-xs opacity-65">{authUser.email || ''}</p>
-                  </div>
-                </div>
-
-                <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-2">
+                <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-1.5">
                   {items.map(({ label, description, icon: Icon, to }) => (
                     <Fragment key={label}>
                     {label === t('Account') ? (
@@ -98,14 +83,11 @@ export default function Navbar() {
                         <button
                           type="button"
                           onClick={() => setAccountExpanded((expanded) => !expanded)}
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                           aria-expanded={accountExpanded}
                         >
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon size={20} /></span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-semibold">{label}</span>
-                            <span className="mt-0.5 block text-xs leading-snug opacity-60">{description}</span>
-                          </span>
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={19} /></span>
+                          <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
                           <ChevronDown size={18} className={accountExpanded ? "rotate-180 transition-transform" : "transition-transform"} />
                         </button>
                         {accountExpanded && (
@@ -136,13 +118,10 @@ export default function Navbar() {
                       key={label}
                       to={to}
                       onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                      className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon size={20} /></span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold">{label}</span>
-                        <span className="mt-0.5 block text-xs leading-snug opacity-60">{description}</span>
-                      </span>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={19} /></span>
+                      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
                     </Link>
                     )}
                     </Fragment>
