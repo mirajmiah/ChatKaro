@@ -38,7 +38,7 @@ router.post('/contacts', protectRoute, addContact);
 router.delete('/contacts/:userId', protectRoute, removeContact);
 
 // Use a distinct path for clearing a conversation so it cannot be mistaken for a message ID.
-router.delete('/chat/:userId', protectRoute, deleteChat);
+router.delete('/clear-chat/:userId', protectRoute, deleteChat);
 router.get('/:messageId/document', protectRoute, getMessageDocument);
 router.get('/:userId', protectRoute, getMessages);
 router.patch('/:userId/read', protectRoute, markMessagesRead);
