@@ -275,20 +275,19 @@ export default function Sidebar() {
                 <p className="mt-1 text-xs text-success">{t('Connected · chat is available')}</p>
               )}
               {contactSearchResult.isHidden && (
-                <p className="mt-1 text-xs text-warning">{t('Removed · accept their message request to reconnect')}</p>
+                <p className="mt-1 text-xs text-warning">{t('Removed · you can send a new request to reconnect')}</p>
               )}
             </div>
-            {contactSearchResult.isHidden ? (
-              <span className="badge badge-warning badge-outline badge-sm shrink-0">{t('Removed')}</span>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSendContactRequest}
-                disabled={isAddingContact || Boolean(contactSearchResult.requestStatus)}
-                className="btn btn-primary btn-xs shrink-0"
-              >
-                {isAddingContact
-                  ? <span className="loading loading-spinner loading-xs" />
+            <button
+              type="button"
+              onClick={handleSendContactRequest}
+              disabled={isAddingContact || Boolean(contactSearchResult.requestStatus && !contactSearchResult.isHidden)}
+              className="btn btn-primary btn-xs shrink-0"
+            >
+              {isAddingContact
+                ? <span className="loading loading-spinner loading-xs" />
+                : contactSearchResult.isHidden
+                  ? <><UserPlus size={14} /> {t('Request again')}</>
                   : contactSearchResult.requestStatus === 'sent'
                     ? t('Sent')
                     : contactSearchResult.requestStatus === 'received'
@@ -296,8 +295,7 @@ export default function Sidebar() {
                       : contactSearchResult.requestStatus === 'accepted'
                         ? t('Connected')
                         : <><UserPlus size={14} /> {t('Request')}</>}
-              </button>
-            )}
+            </button>
           </div>
         )}
         <p className="hidden text-xs text-base-content/50 sm:block">{t('Send a request by email. You can chat after they accept.')}</p>
