@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, UserRound, IdCard, Languages, Palette, BookOpen, Code2, LogOut, MessageCircle } from 'lucide-react';
+import { Menu, X, UserRound, ContactRound, Languages, Palette, BookOpen, Code2, LogOut, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
@@ -38,7 +38,7 @@ export default function Navbar() {
 
   const items = [
     { label: t('Profile'), description: t('Update your photo and personal information'), icon: UserRound, to: '/profile' },
-    { label: t('Account'), description: t('Account details and sign-out options'), icon: IdCard, to: '/profile#account' },
+    { label: t('Account'), description: t('Account details and sign-out options'), icon: ContactRound, to: '/profile#account' },
     { label: t('App language'), description: t('Choose your preferred language'), icon: Languages, to: '/settings#app-language' },
     { label: t('App theme'), description: t('Customize the app appearance'), icon: Palette, to: '/settings#app-theme' },
     { label: t('How to Use'), description: t('Learn how to find contacts and chat'), icon: BookOpen, to: '/settings#how-to-use' },
