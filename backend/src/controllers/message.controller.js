@@ -7,7 +7,7 @@ import { Readable } from 'node:stream';
 import cloudinary from '../lib/cloudinary.js';
 import { emitToUser } from '../lib/socket.js';
 
-const MAX_IMAGE_VIDEO_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_VIDEO_SIZE = 10 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const MAX_IMAGE_VIDEO_BASE64_LENGTH = Math.ceil(MAX_IMAGE_VIDEO_SIZE * 4 / 3) + 1024;
 const MAX_DOCUMENT_BASE64_LENGTH = Math.ceil(MAX_DOCUMENT_SIZE * 4 / 3) + 1024;
