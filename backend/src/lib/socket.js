@@ -12,6 +12,12 @@ export const emitToUser = (userId, event, payload) => {
   io.to(userId.toString()).emit(event, payload);
 };
 
+// Broadcast only explicitly sanitized public profile fields, never private account data.
+export const emitToAll = (event, payload) => {
+  if (!io) return;
+  io.emit(event, payload);
+};
+
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
