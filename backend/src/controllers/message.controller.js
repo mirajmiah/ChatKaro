@@ -740,7 +740,7 @@ export const sendMessage = async (req, res) => {
         return res.status(400).json({
           message: document
             ? 'Documents must be 10 MB or smaller.'
-            : 'Images and videos must be 5 MB or smaller.',
+            : 'Images and videos must be 10 MB or smaller.',
         });
       }
 
