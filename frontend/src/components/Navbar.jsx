@@ -10,13 +10,11 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [accountExpanded, setAccountExpanded] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
     // Always dismiss the menu when navigation changes, including Back to Chats.
     setMenuOpen(false);
-    setAccountExpanded(false);
   }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
@@ -82,44 +80,7 @@ export default function Navbar() {
                 <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-1.5">
                   {items.map(({ label, description, icon: Icon, to }) => (
                     <Fragment key={label}>
-                    {label === t('Account') ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setAccountExpanded((expanded) => !expanded)}
-                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                          aria-expanded={accountExpanded}
-                        >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={19} /></span>
-                          <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
-                          <ChevronDown size={18} className={accountExpanded ? "rotate-180 transition-transform" : "transition-transform"} />
-                        </button>
-                        {accountExpanded && (
-                          <div className="ml-5 border-l-2 border-base-300 py-1 pl-3">
-                            <Link
-                              to={to}
-                              onClick={() => setMenuOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-base-200"
-                            >
-                              {t('Account details')}
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={handleLogout}
-                              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-error transition-colors hover:bg-error/10"
-                            >
-                              <LogOut size={18} />
-                              <span>
-                                <span className="block text-sm font-semibold">{t('Logout')}</span>
-                                <span className="block text-xs opacity-65">{t('Sign out of your ChatKaro account')}</span>
-                              </span>
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
                     <Link
-                      key={label}
                       to={to}
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
@@ -127,7 +88,6 @@ export default function Navbar() {
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={19} /></span>
                       <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
                     </Link>
-                    )}
                     </Fragment>
                   ))}
                 </div>
