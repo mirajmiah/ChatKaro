@@ -81,7 +81,22 @@ export default function InstallPrompt({ authUser }) {
               type="checkbox"
               className="checkbox checkbox-primary checkbox-sm"
               checked={dontShowAgain}
-              onChange={(event) => setDontShowAgain(event.target.checked)}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setDontShowAgain(checked);
+
+                if (checked && authUser?._id) {
+                  window.localStorage.setItem(
+                    `chatkaro-hide-install-prompt-${authUser._id}`,
+                    'true'
+                  );
+                  setVisible(false);
+                } else if (!checked && authUser?._id) {
+                  window.localStorage.removeItem(
+                    `chatkaro-hide-install-prompt-${authUser._id}`
+                  );
+                }
+              }}
             />
             Don't show me again
           </label>
