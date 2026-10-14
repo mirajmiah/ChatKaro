@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Download, X, Smartphone, ShieldCheck } from 'lucide-react';
 
-const APK_URL = 'https://github.com/mirajmiah/ChatKaro/releases/download/android-build-4/ChatKaro.apk';
+const APK_URL = '/ChatKaro.apk';
 
 function isAndroid() {
   return /Android/i.test(window.navigator.userAgent);
@@ -52,6 +52,7 @@ export default function InstallPrompt({ authUser }) {
         <div className="space-y-3 px-6 pb-6">
           <a
             href={APK_URL}
+            download="ChatKaro.apk"
             onClick={() => setDownloadStarted(true)}
             className="btn btn-primary flex w-full gap-2"
           >
