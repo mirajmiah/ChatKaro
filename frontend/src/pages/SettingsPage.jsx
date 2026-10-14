@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Check, Palette, X } from 'lucide-react';
 import { useSettingsStore } from '../store/useSettingsStore.js';
 import { useTranslation } from '../lib/i18n.js';
@@ -145,8 +145,14 @@ function ThemeSwatch({ theme, isSelected, onClick }) {
 export default function SettingsPage() {
   const { theme, setTheme, language, setLanguage } = useSettingsStore();
   const { t } = useTranslation();
+  const location = useLocation();
   const guide = USAGE_GUIDE[language] ?? USAGE_GUIDE.en;
   const [isDeveloperImageOpen, setIsDeveloperImageOpen] = useState(false);
+
+  useEffect(() => {
+    if (!location.hash) return;
+    document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [location.hash]);
 
   useEffect(() => {
     if (!isDeveloperImageOpen) return undefined;
