@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from '../components/ImageViewer.jsx';
@@ -8,6 +8,7 @@ import ImageViewer from '../components/ImageViewer.jsx';
 export default function ProfilePage() {
   const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
   const { language, t } = useTranslation();
+  const location = useLocation();
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
@@ -15,6 +16,11 @@ export default function ProfilePage() {
   const fileInputRef = useRef(null);
 
   const isOnline = onlineUsers.includes(authUser?._id);
+
+  useEffect(() => {
+    if (!location.hash) return;
+    document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [location.hash]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
