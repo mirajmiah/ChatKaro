@@ -344,7 +344,6 @@ export default function ProfilePage() {
               </button>
               </div>
             )}
-            </div>
 
             {!isAccountView && (
               <p className="text-xs text-base-content/40 text-center">
