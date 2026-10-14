@@ -39,12 +39,16 @@ router.delete('/contacts/:userId', protectRoute, removeContact);
 router.get('/:messageId/document', protectRoute, getMessageDocument);
 router.get('/:userId', protectRoute, getMessages);
 router.patch('/:userId/read', protectRoute, markMessagesRead);
+
+// Keep the message-specific DELETE route before the generic chat-history route.
+// Otherwise DELETE /:userId captures DELETE /:messageId?scope=everyone.
+router.delete('/:messageId', protectRoute, deleteMessage);
 router.delete('/:userId', protectRoute, deleteChat);
+
 router.post('/send/:userId', protectRoute, sendMessage);
 router.post('/:messageId/forward', protectRoute, forwardMessage);
 router.patch('/:messageId/star', protectRoute, toggleStarMessage);
 router.patch('/:messageId/pin', protectRoute, togglePinMessage);
 router.put('/:messageId', protectRoute, editMessage);
-router.delete('/:messageId', protectRoute, deleteMessage);
 
 export default router;
