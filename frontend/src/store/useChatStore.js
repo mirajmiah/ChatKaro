@@ -222,9 +222,15 @@ fetchUsers: async () => {
   deleteChat: async (userId) => {
     try {
       const res = await api.delete(`/messages/clear-chat/${userId}`);
-      if (String(get().selectedUser?._id) === String(userId)) {
-        set({ messages: [] });
-      }
+      // Clear the open conversation and its sidebar preview immediately.
+      set((state) => ({
+        messages: String(state.selectedUser?._id) === String(userId) ? [] : state.messages,
+        users: state.users.map((user) => String(user._id) === String(userId)
+          ? { ...user, latestMessage: null, unreadCount: 0 }
+          : user),
+      }));
+      // Re-fetch server truth so the preview cannot reappear from stale state.
+      await get().fetchUsers();
       toast.success(translateCurrent(res.data.message));
       return res.data;
     } catch (err) {
