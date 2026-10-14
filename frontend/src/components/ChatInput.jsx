@@ -5,7 +5,7 @@ import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
-const MAX_IMAGE_VIDEO_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_VIDEO_SIZE = 10 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 
 export default function ChatInput({ replyTarget, onCancelReply }) {
@@ -44,7 +44,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     if (file.size > maxFileSize) {
       toast.error(t(isDocument
         ? 'Documents must be 10 MB or smaller.'
-        : 'Images and videos must be 5 MB or smaller.'));
+        : 'Images and videos must be 10 MB or smaller.'));
       return;
     }
     const reader = new FileReader();
