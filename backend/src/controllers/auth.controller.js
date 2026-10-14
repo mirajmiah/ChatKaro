@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model.js';
 import cloudinary from '../lib/cloudinary.js';
+import { emitToAll } from '../lib/socket.js';
 import { sendOtpEmail } from '../lib/email.js';
 
 const COOKIE_NAME = 'nexus-jwt';
@@ -292,6 +293,10 @@ export const updateProfile = async (req, res) => {
       { new: true }
     ).select('-password');
 
+    emitToAll('profileUpdated', {
+      _id: user._id.toString(),
+      profilePic: user.profilePic,
+    });
     return res.status(200).json(user);
   } catch (error) {
     console.error('updateProfile error:', error.message);
