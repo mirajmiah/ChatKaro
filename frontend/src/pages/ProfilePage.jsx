@@ -346,9 +346,11 @@ export default function ProfilePage() {
             )}
             </div>
 
-            <p className="text-xs text-base-content/40 text-center">
-              {t('Click the camera icon to upload a new profile photo (max 10MB)')}
-            </p>
+            {!isAccountView && (
+              <p className="text-xs text-base-content/40 text-center">
+                {t('Click the camera icon to upload a new profile photo (max 10MB)')}
+              </p>
+            )}
           </div>
         </div>
       </div>
