@@ -1,19 +1,28 @@
 import nodemailer from 'nodemailer';
 
 const getTransporter = () => {
-  const user = process.env.SMTP_USER;
-  const password = process.env.SMTP_PASS?.replace(/\s/g, '');
-  if (!user || !password) {
-    throw new Error('Gmail SMTP is not configured. Set SMTP_USER and SMTP_PASS.');
+  // Trim accidental whitespace from dashboard/environment values.
+  const user = (process.env.SMTP_USER || process.env.GMAIL_USER || '').trim();
+  const password = (
+    process.env.SMTP_PASS ||
+    process.env.GMAIL_APP_PASSWORD ||
+    process.env.SMTP_APP_PASSWORD ||
+    ''
+  ).replace(/\s/g, '');
+
+  const missing = [];
+  if (!user) missing.push('SMTP_USER');
+  if (!password) missing.push('SMTP_PASS');
+  if (missing.length) {
+    throw new Error(`Gmail SMTP is not configured. Missing environment variable(s): ${missing.join(', ')}. Set them in Render → Environment.`);
   }
 
   const port = Number(process.env.SMTP_PORT || 465);
+  const secureSetting = (process.env.SMTP_SECURE || '').trim().toLowerCase();
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: (process.env.SMTP_HOST || 'smtp.gmail.com').trim(),
     port,
-    secure: process.env.SMTP_SECURE
-      ? process.env.SMTP_SECURE.toLowerCase() === 'true'
-      : port === 465,
+    secure: secureSetting ? secureSetting === 'true' : port === 465,
     auth: { user, pass: password },
   });
 };
@@ -32,7 +41,8 @@ export const sendOtpEmail = async (email, otp, purpose) => {
   const message = messages[purpose];
   if (!message) throw new Error('Unsupported email verification purpose.');
 
-  const from = process.env.SMTP_FROM || `ChatKaro <${process.env.SMTP_USER}>`;
+  const smtpUser = (process.env.SMTP_USER || process.env.GMAIL_USER || '').trim();
+  const from = (process.env.SMTP_FROM || '').trim() || `ChatKaro <${smtpUser}>`;
   await getTransporter().sendMail({
     from,
     to: email,
