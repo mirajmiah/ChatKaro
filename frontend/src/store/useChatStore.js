@@ -328,28 +328,61 @@ fetchUsers: async () => {
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
-    socket.on('messageEdited', (message) => {
+
+    // Stable handlers let us remove only this store's listeners during cleanup.
+    const onNewMessage = (message) => get().handleIncomingMessage(message);
+    const onMessageEdited = (message) => {
+      set((state) => ({
+        messages: state.messages.map((item) => item._id === message._id ? message : item),
+        users: state.users.map((user) => String(user._id) === String(message.senderId) || String(user._id) === String(message.receiverId)
+          ? { ...user, latestMessage: user.latestMessage?._id === message._id ? message : user.latestMessage }
+          : user),
+      }));
+    };
+    const onMessageDeleted = (message) => {
+      set((state) => ({
+        messages: state.messages.map((item) => item._id === message._id ? message : item),
+        users: state.users.map((user) => String(user._id) === String(message.senderId) || String(user._id) === String(message.receiverId)
+          ? { ...user, latestMessage: user.latestMessage?._id === message._id ? message : user.latestMessage }
+          : user),
+      }));
+    };
+    const onMessagePinned = (message) => {
       set((state) => ({
         messages: state.messages.map((item) => item._id === message._id ? message : item),
       }));
-    });
-    socket.on('messageDeleted', (message) => {
+    };
+    const onProfileUpdated = (profile) => {
       set((state) => ({
-        messages: state.messages.map((item) => item._id === message._id ? message : item),
+        users: state.users.map((user) => String(user._id) === String(profile._id)
+          ? { ...user, profilePic: profile.profilePic }
+          : user),
+        selectedUser: String(state.selectedUser?._id) === String(profile._id)
+          ? { ...state.selectedUser, profilePic: profile.profilePic }
+          : state.selectedUser,
+        messages: state.messages.map((message) => ({
+          ...message,
+          sender: message.sender && String(message.sender._id || message.sender) === String(profile._id)
+            ? { ...message.sender, profilePic: profile.profilePic }
+            : message.sender,
+        })),
       }));
-    });
-    socket.on('messagePinned', (message) => {
-      set((state) => ({
-        messages: state.messages.map((item) => item._id === message._id ? message : item),
-      }));
-    });
+    };
+
+    socket.on('newMessage', onNewMessage);
+    socket.on('messageEdited', onMessageEdited);
+    socket.on('messageDeleted', onMessageDeleted);
+    socket.on('messagePinned', onMessagePinned);
+    socket.on('profileUpdated', onProfileUpdated);
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
+    socket.off('newMessage');
     socket.off('messageEdited');
     socket.off('messageDeleted');
     socket.off('messagePinned');
+    socket.off('profileUpdated');
   },
 }));
