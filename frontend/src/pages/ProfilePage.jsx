@@ -20,8 +20,8 @@ export default function ProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert(t('Image must be smaller than 5MB'));
+    if (file.size > 10 * 1024 * 1024) {
+      alert(t('Image must be 10 MB or smaller'));
       return;
     }
 
@@ -319,7 +319,7 @@ export default function ProfilePage() {
             </div>
 
             <p className="text-xs text-base-content/40 text-center">
-              {t('Click the camera icon to upload a new profile photo (max 5MB)')}
+              {t('Click the camera icon to upload a new profile photo (max 10MB)')}
             </p>
           </div>
         </div>
