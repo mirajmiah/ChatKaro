@@ -147,6 +147,12 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const location = useLocation();
   const guide = USAGE_GUIDE[language] ?? USAGE_GUIDE.en;
+  const activeSection = location.hash.replace('#', '') || 'app-theme';
+  const showTheme = activeSection === 'app-theme';
+  const showLanguage = activeSection === 'app-language';
+  const showHowToUse = activeSection === 'how-to-use';
+  const showAboutDeveloper = activeSection === 'about-developer';
+  const sectionTitle = showTheme ? t('App theme') : showLanguage ? t('App language') : showHowToUse ? t('How to Use') : t('About Developer');
   const [isDeveloperImageOpen, setIsDeveloperImageOpen] = useState(false);
 
   useEffect(() => {
@@ -186,13 +192,14 @@ export default function SettingsPage() {
       <Palette size={24} className="text-primary" />
     </div>
 
-    <h1 className="text-2xl font-bold">{t('Settings')}</h1>
+    <h1 className="text-2xl font-bold">{sectionTitle}</h1>
     <p className="text-base-content/60 mt-1">
       {t('Customize your ChatKaro experience')}
     </p>
   </div>
 </div>
 
+        {showTheme && (
         <div className="card bg-base-200 shadow-xl border border-base-300">
           <div id="app-theme" className="card-body gap-6 scroll-mt-24">
             <div>
@@ -231,7 +238,9 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <section id="app-language" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="app-language-title">
+        )}
+
+          {showLanguage && <section id="app-language" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="app-language-title">
             <div className="card-body gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -259,9 +268,9 @@ export default function SettingsPage() {
               </div>
 
             </div>
-          </section>
+          </section>}
 
-          <section id="how-to-use" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="usage-guide-title">
+          {showHowToUse && <section id="how-to-use" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="usage-guide-title">
             <div className="card-body gap-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
@@ -296,9 +305,9 @@ export default function SettingsPage() {
                 ))}
               </ol>
             </div>
-          </section>
+          </section>}
 
-          <section id="about-developer" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="about-developer-title">
+          {showAboutDeveloper && <section id="about-developer" className="card bg-base-200 shadow-xl border border-base-300 mt-6 scroll-mt-24" aria-labelledby="about-developer-title">
             <div className="card-body gap-5">
               <h2 id="about-developer-title" className="text-lg font-semibold">
                 {guide.aboutDeveloperTitle}
@@ -324,7 +333,7 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-          </section>
+          </section>}
         </div>
       </div>
 
