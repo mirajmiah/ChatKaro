@@ -60,3 +60,16 @@ jobs:
             --title "ChatKaro Android APK ${GITHUB_RUN_NUMBER}" \
             --notes "Automated Android APK build from commit ${GITHUB_SHA}. This debug-signed APK is for testing. A production release should use a protected signing key." \
             --latest
+
+      - name: Publish APK to same-origin frontend download
+        working-directory: .
+        run: |
+          mkdir -p frontend/public
+          cp ChatKaro.apk frontend/public/ChatKaro.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/ChatKaro.apk
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish ChatKaro APK for direct website download"
+            git push
+          fi
