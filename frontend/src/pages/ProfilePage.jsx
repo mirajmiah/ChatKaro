@@ -296,7 +296,7 @@ export default function ProfilePage() {
                   </p>
                 )}
               </div>
-
+              </div>
               </>
             )}
             {isAccountView && (
