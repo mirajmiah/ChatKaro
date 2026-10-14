@@ -8,9 +8,9 @@ import ImageViewer from '../components/ImageViewer.jsx';
 export default function ProfilePage() {
   const { authUser, updateProfile, updateName, updateBio, onlineUsers, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAccountView = location.hash === '#account';
   const { language, t } = useTranslation();
-  const location = useLocation();
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
@@ -96,7 +96,7 @@ export default function ProfilePage() {
       <div className="w-full max-w-lg">
         <div className="mb-8">
   <div className="flex w-full justify-start mb-6">
-    <Link to="/" className="btn btn-ghost btn-sm gap-2">
+    <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: "auto" })} className="btn btn-ghost btn-sm gap-2">
       <ArrowLeft size={16} />
       {t('Back to Chats')}
     </Link>
