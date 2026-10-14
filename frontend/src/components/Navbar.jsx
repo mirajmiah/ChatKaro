@@ -38,7 +38,7 @@ export default function Navbar() {
 
   const items = [
     { label: t('Profile'), description: t('Update your photo and personal information'), icon: UserRound, to: '/profile' },
-    { label: t('Account'), description: t('Email, account status and membership details'), icon: IdCard, to: '/profile#account' },
+    { label: t('Account'), description: t('Account details and sign-out options'), icon: IdCard, to: '/profile#account' },
     { label: t('App language'), description: t('Choose your preferred language'), icon: Languages, to: '/settings#app-language' },
     { label: t('App theme'), description: t('Customize the app appearance'), icon: Palette, to: '/settings#app-theme' },
     { label: t('How to Use'), description: t('Learn how to find contacts and chat'), icon: BookOpen, to: '/settings#how-to-use' },
@@ -104,18 +104,22 @@ export default function Navbar() {
                         <span className="mt-0.5 block text-xs leading-snug opacity-60">{description}</span>
                       </span>
                     </Link>
+                    {label === t('Account') && (
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-error transition-colors hover:bg-error/10"
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error/10"><LogOut size={20} /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold">{t('Logout')}</span>
+                          <span className="mt-0.5 block text-xs leading-snug opacity-65">{t('Sign out of your ChatKaro account')}</span>
+                        </span>
+                      </button>
+                    )}
                   ))}
                 </div>
 
-                <div className="border-t border-base-300 p-2">
-                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-error transition-colors hover:bg-error/10">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-error/10"><LogOut size={20} /></span>
-                    <span>
-                      <span className="block text-sm font-semibold">{t('Logout')}</span>
-                      <span className="mt-0.5 block text-xs opacity-65">{t('Sign out of your ChatKaro account')}</span>
-                    </span>
-                  </button>
-                </div>
               </section>
             </>
           )}
