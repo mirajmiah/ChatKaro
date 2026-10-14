@@ -24,6 +24,13 @@ export default function ProfilePage() {
     document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [location.hash]);
 
+  // Make the device/browser Back button return to Chats from this page.
+  useEffect(() => {
+    const handleBrowserBack = () => navigate('/', { replace: true });
+    window.addEventListener('popstate', handleBrowserBack);
+    return () => window.removeEventListener('popstate', handleBrowserBack);
+  }, [navigate]);
+
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
