@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, UserRound, ContactRound, Languages, Palette, BookOpen, Code2, LogOut, MessageCircle } from 'lucide-react';
+import { Menu, X, ChevronDown, UserRound, ContactRound, Languages, Palette, BookOpen, Code2, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
@@ -88,7 +88,6 @@ export default function Navbar() {
                     <p className="truncate font-semibold">{authUser.fullName || t('ChatKaro user')}</p>
                     <p className="truncate text-xs opacity-65">{authUser.email || ''}</p>
                   </div>
-                  <MessageCircle size={19} className="shrink-0 text-primary" />
                 </div>
 
                 <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-2">
