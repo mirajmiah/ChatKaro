@@ -11,6 +11,7 @@ import SettingsPage from './pages/SettingsPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import Navbar from './components/Navbar.jsx';
+import InstallPrompt from './components/InstallPrompt.jsx';
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/settings" element={authUser ? <SettingsPage /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      <InstallPrompt />
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
     </div>
   );
