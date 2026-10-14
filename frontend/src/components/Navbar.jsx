@@ -13,7 +13,11 @@ export default function Navbar() {
   const [accountExpanded, setAccountExpanded] = useState(false);
   const menuRef = useRef(null);
 
-  useEffect(() => { setMenuOpen(false); setAccountExpanded(false); }, [location.pathname, location.hash]);
+  useEffect(() => {
+    // Always dismiss the menu when navigation changes, including Back to Chats.
+    setMenuOpen(false);
+    setAccountExpanded(false);
+  }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
