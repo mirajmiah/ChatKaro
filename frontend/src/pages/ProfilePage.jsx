@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from '../components/ImageViewer.jsx';
 
 export default function ProfilePage() {
-  const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
+  const { authUser, updateProfile, updateName, updateBio, onlineUsers, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const isAccountView = location.hash === '#account';
   const { language, t } = useTranslation();
   const location = useLocation();
   const [isUploading, setIsUploading] = useState(false);
@@ -101,15 +103,17 @@ export default function ProfilePage() {
   </div>
 
   <div className="text-center">
-    <h1 className="text-2xl font-bold">{t('Your Profile')}</h1>
+    <h1 className="text-2xl font-bold">{isAccountView ? t('Account') : t('Your Profile')}</h1>
     <p className="text-base-content/60 mt-1">
-      {t('Manage your account information')}
+      {isAccountView ? t('Account details, membership, and sign out') : t('Manage your account information')}
     </p>
   </div>
 </div>
 
         <div className="card bg-base-200 shadow-xl border border-base-300">
           <div className="card-body items-center gap-6">
+            {!isAccountView && (
+              <>
             {/* Avatar section */}
             <div className="relative">
               <div className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-primary/30 bg-base-300 flex items-center justify-center">
@@ -293,7 +297,11 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div id="account" className="scroll-mt-24 flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
+              </>
+            )}
+            {isAccountView && (
+              <div className="w-full space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
                 <Mail size={18} className="text-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
@@ -322,6 +330,20 @@ export default function ProfilePage() {
                   <p className="font-semibold text-success">{t('Active')}</p>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  await logout();
+                  navigate('/login', { replace: true });
+                }}
+                className="btn btn-error mt-2 w-full gap-2"
+              >
+                <LogOut size={18} />
+                {t('Logout')}
+              </button>
+              </div>
+            )}
             </div>
 
             <p className="text-xs text-base-content/40 text-center">
