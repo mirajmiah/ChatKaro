@@ -334,9 +334,6 @@ export default function SettingsPage() {
               </div>
             </div>
           </section>}
-        </div>
-      </div>
-
       {isDeveloperImageOpen && (
         <div
           className="modal modal-open z-[1200] bg-black/80 p-4"
@@ -363,6 +360,7 @@ export default function SettingsPage() {
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
