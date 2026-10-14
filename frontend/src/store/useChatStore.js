@@ -221,7 +221,7 @@ fetchUsers: async () => {
 
   deleteChat: async (userId) => {
     try {
-      const res = await api.delete(`/messages/${userId}`);
+      const res = await api.delete(`/messages/chat/${userId}`);
       if (String(get().selectedUser?._id) === String(userId)) {
         set({ messages: [] });
       }
