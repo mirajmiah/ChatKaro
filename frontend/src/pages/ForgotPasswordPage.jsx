@@ -54,7 +54,12 @@ export default function ForgotPasswordPage() {
       setMessage(response.data.message);
       setOtpSent(true);
     } catch (error) {
-      setMessage(t(error.response?.data?.message || 'Unable to process request.'));
+      const errMsg =
+        error.response?.data?.message ||
+        (error.code === 'ECONNABORTED' ? 'Request timed out. The server might be waking up.' : null) ||
+        (error.message === 'Network Error' ? 'Network error: Cannot reach the backend server. Make sure it is running.' : null) ||
+        'Unable to process request.';
+      setMessage(t(errMsg));
       setMessageIsError(true);
     } finally {
       setIsLoading(false);
@@ -81,7 +86,12 @@ export default function ForgotPasswordPage() {
       setPassword('');
       setConfirmation('');
     } catch (error) {
-      setMessage(t(error.response?.data?.message || 'Unable to reset password.'));
+      const errMsg =
+        error.response?.data?.message ||
+        (error.code === 'ECONNABORTED' ? 'Request timed out. The server might be waking up.' : null) ||
+        (error.message === 'Network Error' ? 'Network error: Cannot reach the backend server. Make sure it is running.' : null) ||
+        'Unable to reset password.';
+      setMessage(t(errMsg));
       setMessageIsError(true);
     } finally {
       setIsLoading(false);
