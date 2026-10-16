@@ -71,19 +71,13 @@ export const useAuthStore = create((set, get) => ({
 
   login: async (data) => {
     try {
-      let credential;
-      try {
-        credential = await signInWithEmailAndPassword(firebaseAuth, data.email.trim(), data.password);
-      } catch (firebaseError) {
-        if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/invalid-credential') {
-          const legacy = await api.post('/auth/login', data);
-          set({ authUser: legacy.data });
-          get().connectSocket(legacy.data);
-          toast.success(translateCurrent('Welcome back, {name}!', { name: legacy.data.fullName }));
-          return legacy.data;
-        }
-        throw firebaseError;
-      }
+      // Do not fall back to the legacy password endpoint when Firebase rejects
+      // credentials: that could bypass Firebase email-verification enforcement.
+      const credential = await signInWithEmailAndPassword(
+        firebaseAuth,
+        data.email.trim(),
+        data.password
+      );
       await reload(credential.user);
       if (!credential.user.emailVerified) {
         await signOut(firebaseAuth);
