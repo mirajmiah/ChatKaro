@@ -183,8 +183,6 @@ export const firebaseLogin = async (req, res) => {
       await user.save();
     }
 
-    user.lastSeen = new Date();
-    await user.save();
     setCookie(res, signToken(user));
     return res.status(200).json({
       _id: user._id,
@@ -324,7 +322,7 @@ export const updateProfile = async (req, res) => {
     }
 
     if (profilePic.length > 10 * 1024 * 1024) {
-      return res.status(400).json({ message: 'Profile picture must be smaller than 5MB.' });
+      return res.status(400).json({ message: 'Profile picture must be smaller than 10MB.' });
     }
 
     const uploadResult = await cloudinary.uploader.upload(profilePic, {
