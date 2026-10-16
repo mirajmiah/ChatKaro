@@ -6,6 +6,7 @@ import User from '../models/user.model.js';
 import cloudinary from '../lib/cloudinary.js';
 import { emitToAll } from '../lib/socket.js';
 import { sendOtpEmail } from '../lib/email.js';
+import { verifyFirebaseIdToken } from '../lib/firebaseAdmin.js';
 
 const COOKIE_NAME = 'nexus-jwt';
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -153,6 +154,50 @@ export const resendSignupOtp = async (req, res) => {
   } catch (error) {
     console.error('resendSignupOtp error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const firebaseLogin = async (req, res) => {
+  try {
+    const idToken = typeof req.body.idToken === 'string' ? req.body.idToken : '';
+    if (!idToken) return res.status(400).json({ message: 'Firebase ID token is required.' });
+
+    const decoded = await verifyFirebaseIdToken(idToken);
+    if (!decoded.email || decoded.email_verified !== true) {
+      return res.status(403).json({ message: 'Please verify your email before signing in.' });
+    }
+
+    const email = decoded.email.toLowerCase().trim();
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        fullName: (decoded.name || email.split('@')[0]).slice(0, 80),
+        email,
+        password: await bcryptjs.hash(crypto.randomBytes(32).toString('hex'), 12),
+        emailVerified: true,
+      });
+    } else {
+      if (!user.emailVerified) user.emailVerified = true;
+      if (decoded.name && !user.fullName) user.fullName = decoded.name.slice(0, 80);
+      user.lastSeen = new Date();
+      await user.save();
+    }
+
+    user.lastSeen = new Date();
+    await user.save();
+    setCookie(res, signToken(user));
+    return res.status(200).json({
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      profilePic: user.profilePic,
+      bio: user.bio,
+      lastSeen: user.lastSeen,
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    console.error('firebaseLogin error:', error.message);
+    return res.status(401).json({ message: 'Firebase authentication failed. Please sign in again.' });
   }
 };
 
