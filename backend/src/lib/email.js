@@ -20,6 +20,39 @@ const buildMessage = (otp, purpose) => {
   };
 };
 
+const sendWithBrevo = async ({ to, subject, text, html }) => {
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  const senderEmail = (process.env.BREVO_SENDER_EMAIL || '').trim();
+  const senderName = (process.env.BREVO_SENDER_NAME || 'ChatKaro').trim();
+
+  if (!apiKey) throw new Error('BREVO_API_KEY is not configured.');
+  if (!senderEmail) throw new Error('BREVO_SENDER_EMAIL is not configured. Add a verified sender email in Brevo.');
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = typeof result.message === 'string' ? result.message : `HTTP ${response.status}`;
+    throw new Error(`Brevo email API failed: ${detail}`);
+  }
+  return result;
+};
+
 const sendWithResend = async ({ to, subject, text, html }) => {
   const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) throw new Error('RESEND_API_KEY is not configured.');
