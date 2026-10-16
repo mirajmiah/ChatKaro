@@ -3,6 +3,8 @@ import api from '../lib/axios.js';
 import toast from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import { translateCurrent } from '../lib/i18n.js';
+import { firebaseAuth } from '../lib/firebase.js';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, signInWithEmailAndPassword, signOut, reload } from 'firebase/auth';
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -24,47 +26,77 @@ export const useAuthStore = create((set, get) => ({
 
   signup: async (data) => {
     try {
-      const res = await api.post('/auth/signup', data);
-      toast.success(translateCurrent('Verification code sent to your email.'));
-      return res.data;
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, data.email.trim(), data.password);
+      await updateProfile(credential.user, { displayName: data.fullName.trim() });
+      await sendEmailVerification(credential.user, {
+        url: 'https://chatkaro-7cv0.onrender.com/login',
+        handleCodeInApp: false,
+      });
+      toast.success(translateCurrent('Verification link sent. Check your inbox and spam folder.'));
+      return { email: credential.user.email, verificationRequired: true };
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Signup failed'));
+      const message = err.code === 'auth/email-already-in-use'
+        ? 'This email already has an account. Try signing in or resending verification.'
+        : err.code === 'auth/invalid-email'
+          ? 'Enter a valid email address.'
+          : err.code === 'auth/weak-password'
+            ? 'Password must be at least 6 characters.'
+            : err.message || 'Unable to create account';
+      toast.error(translateCurrent(message));
       throw err;
     }
   },
 
-  verifySignupOtp: async (email, otp, fullName, password) => {
-    try {
-      const res = await api.post('/auth/signup/verify-otp', { email, otp, fullName, password });
-      set({ authUser: res.data });
-      get().connectSocket(res.data);
-      toast.success(translateCurrent('Email verified. Your account is ready.'));
-      return res.data;
-    } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Unable to verify email'));
-      throw err;
-    }
+  verifySignupOtp: async () => {
+    throw new Error('Email verification now uses the link sent by Firebase. Please sign in after verifying.');
   },
 
-  resendSignupOtp: async (email) => {
+  resendSignupOtp: async () => {
     try {
-      const res = await api.post('/auth/signup/resend-otp', { email });
-      toast.success(translateCurrent(res.data.message));
-      return res.data;
+      const user = firebaseAuth.currentUser;
+      if (!user) throw new Error('For security, return to signup and enter your details again to request a new verification email.');
+      await reload(user);
+      if (user.emailVerified) throw new Error('Your email is already verified. Please sign in.');
+      await sendEmailVerification(user, {
+        url: 'https://chatkaro-7cv0.onrender.com/login',
+        handleCodeInApp: false,
+      });
+      toast.success(translateCurrent('A new verification link was sent.'));
+      return { message: 'A new verification link was sent.' };
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Unable to resend verification code'));
+      toast.error(translateCurrent(err.message || 'Unable to resend verification email'));
       throw err;
     }
   },
 
   login: async (data) => {
     try {
-      const res = await api.post('/auth/login', data);
+      let credential;
+      try {
+        credential = await signInWithEmailAndPassword(firebaseAuth, data.email.trim(), data.password);
+      } catch (firebaseError) {
+        if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/invalid-credential') {
+          const legacy = await api.post('/auth/login', data);
+          set({ authUser: legacy.data });
+          get().connectSocket(legacy.data);
+          toast.success(translateCurrent('Welcome back, {name}!', { name: legacy.data.fullName }));
+          return legacy.data;
+        }
+        throw firebaseError;
+      }
+      await reload(credential.user);
+      if (!credential.user.emailVerified) {
+        await signOut(firebaseAuth);
+        throw new Error('Please verify your email using the link we sent before signing in.');
+      }
+      const idToken = await credential.user.getIdToken(true);
+      const res = await api.post('/auth/firebase-login', { idToken });
       set({ authUser: res.data });
       get().connectSocket(res.data);
       toast.success(translateCurrent('Welcome back, {name}!', { name: res.data.fullName }));
+      return res.data;
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Login failed'));
+      toast.error(translateCurrent(err.response?.data?.message || err.message || 'Login failed'));
       throw err;
     }
   },
