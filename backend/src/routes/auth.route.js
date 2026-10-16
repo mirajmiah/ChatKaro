@@ -4,6 +4,7 @@ import {
   verifySignupOtp,
   resendSignupOtp,
   login,
+  firebaseLogin,
   googleLogin,
   logout,
   checkAuth,
@@ -22,6 +23,7 @@ router.post('/signup', authLimiter, signup);
 router.post('/signup/verify-otp', authLimiter, verifySignupOtp);
 router.post('/signup/resend-otp', authLimiter, resendSignupOtp);
 router.post('/login', authLimiter, login);
+router.post('/firebase-login', authLimiter, firebaseLogin);
 router.post('/google', authLimiter, googleLogin);
 router.post('/logout', logout);
 router.put('/update-name', protectRoute, updateName);
