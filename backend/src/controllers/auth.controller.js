@@ -70,7 +70,7 @@ export const signup = async (req, res) => {
       await sendOtpEmail(user.email, otp, 'signup');
     } catch (error) {
       console.error('signup verification email error:', error.message);
-      return res.status(503).json({ message: 'Unable to send the verification code. Check Gmail SMTP configuration and try again.' });
+      return res.status(503).json({ message: 'Unable to send the verification code. Check the configured email provider and sender settings, then try again.' });
     }
 
     return res.status(200).json({
@@ -147,7 +147,7 @@ export const resendSignupOtp = async (req, res) => {
       await sendOtpEmail(user.email, otp, 'signup');
     } catch (error) {
       console.error('resend signup verification email error:', error.message);
-      return res.status(503).json({ message: 'Unable to send the verification code. Check Gmail SMTP configuration and try again.' });
+      return res.status(503).json({ message: 'Unable to send the verification code. Check the configured email provider and sender settings, then try again.' });
     }
     return res.status(200).json({ message: 'A new verification code was sent to your email.' });
   } catch (error) {
@@ -368,7 +368,7 @@ export const forgotPassword = async (req, res) => {
         await sendOtpEmail(user.email, otp, 'passwordReset');
       } catch (error) {
         console.error('password reset email error:', error.message);
-        return res.status(503).json({ message: 'Unable to send the password reset code. Check Gmail SMTP configuration and try again.' });
+        return res.status(503).json({ message: 'Unable to send the password reset code. Check the configured email provider and sender settings, then try again.' });
       }
     }
 
