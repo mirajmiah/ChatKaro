@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyCJFuy sjQ5i_rkBB5Fo7zXDvf_pSvWCCNs'.replaceAll(' ', ''),
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: 'chatkaro-d676b.firebaseapp.com',
   projectId: 'chatkaro-d676b',
   storageBucket: 'chatkaro-d676b.firebasestorage.app',
