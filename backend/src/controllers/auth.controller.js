@@ -1,4 +1,4 @@
-﻿import bcryptjs from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
 import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
@@ -70,7 +70,10 @@ export const signup = async (req, res) => {
       await sendOtpEmail(user.email, otp, 'signup');
     } catch (error) {
       console.error('signup verification email error:', error.message);
-      return res.status(503).json({ message: 'Unable to send the verification code. Check Gmail SMTP configuration and try again.' });
+      user.signupOtpHash = undefined;
+      user.signupOtpExpires = undefined;
+      await user.save();
+      return res.status(503).json({ message: 'We could not send your verification email. The email service is currently unavailable; please try again later.' });
     }
 
     return res.status(200).json({
@@ -93,7 +96,7 @@ export const verifySignupOtp = async (req, res) => {
     const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
     const fullName = typeof req.body.fullName === 'string' ? req.body.fullName.trim() : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
-    if (!email || !/^\d{6}$/.test(otp)) {
+    if (!email || !/^\\d{6}$/.test(otp)) {
       return res.status(400).json({ message: 'Enter a valid six-digit verification code.' });
     }
     if (!fullName || fullName.length > 80 || password.length < 6) {
@@ -147,7 +150,10 @@ export const resendSignupOtp = async (req, res) => {
       await sendOtpEmail(user.email, otp, 'signup');
     } catch (error) {
       console.error('resend signup verification email error:', error.message);
-      return res.status(503).json({ message: 'Unable to send the verification code. Check Gmail SMTP configuration and try again.' });
+      user.signupOtpHash = undefined;
+      user.signupOtpExpires = undefined;
+      await user.save();
+      return res.status(503).json({ message: 'We could not send your verification email. The email service is currently unavailable; please try again later.' });
     }
     return res.status(200).json({ message: 'A new verification code was sent to your email.' });
   } catch (error) {
@@ -368,7 +374,10 @@ export const forgotPassword = async (req, res) => {
         await sendOtpEmail(user.email, otp, 'passwordReset');
       } catch (error) {
         console.error('password reset email error:', error.message);
-        return res.status(503).json({ message: 'Unable to send the password reset code. Check Gmail SMTP configuration and try again.' });
+        user.resetPasswordOtpHash = undefined;
+        user.resetPasswordOtpExpires = undefined;
+        await user.save();
+        return res.status(503).json({ message: 'We could not send your password reset email. The email service is currently unavailable; please try again later.' });
       }
     }
 
