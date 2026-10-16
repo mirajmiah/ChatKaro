@@ -51,10 +51,14 @@ export const useAuthStore = create((set, get) => ({
     throw new Error('Email verification now uses the link sent by Firebase. Please sign in after verifying.');
   },
 
-  resendSignupOtp: async () => {
+  resendSignupOtp: async ({ email, password } = {}) => {
     try {
-      const user = firebaseAuth.currentUser;
-      if (!user) throw new Error('For security, return to signup and enter your details again to request a new verification email.');
+      let user = firebaseAuth.currentUser;
+      if (!user && email && password) {
+        const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+        user = credential.user;
+      }
+      if (!user) throw new Error('Enter your email and password above, then try resending the verification email.');
       await reload(user);
       if (user.emailVerified) throw new Error('Your email is already verified. Please sign in.');
       await sendEmailVerification(user, {
