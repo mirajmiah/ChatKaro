@@ -42,7 +42,7 @@ export default function SignupPage() {
   const handleResend = async () => {
     setIsResending(true);
     try {
-      await resendSignupOtp();
+      await resendSignupOtp({ email: formData.email, password: formData.password });
     } catch {
       // The auth store displays the error toast.
     } finally {
