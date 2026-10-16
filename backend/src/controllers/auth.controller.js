@@ -96,7 +96,7 @@ export const verifySignupOtp = async (req, res) => {
     const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
     const fullName = typeof req.body.fullName === 'string' ? req.body.fullName.trim() : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
-    if (!email || !/^\\d{6}$/.test(otp)) {
+    if (!email || !/^\d{6}$/.test(otp)) {
       return res.status(400).json({ message: 'Enter a valid six-digit verification code.' });
     }
     if (!fullName || fullName.length > 80 || password.length < 6) {
