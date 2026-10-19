@@ -1,4 +1,4 @@
-﻿# ChatKaro
+# ChatKaro
 
 A production-ready, full-stack real-time chat application built with React 18, Node.js, MongoDB, and Socket.IO.
 
@@ -97,12 +97,10 @@ CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=your-gmail-address@gmail.com
-SMTP_PASS=your-16-character-gmail-app-password
-SMTP_FROM=ChatKaro <your-gmail-address@gmail.com>
+GMAIL_USER=your-gmail-address@gmail.com
+GMAIL_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=your-google-client-secret
+GMAIL_REFRESH_TOKEN=your-google-refresh-token
 GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 ```
 
@@ -116,12 +114,11 @@ GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
 1. Create a free account at https://cloudinary.com
 2. From the Dashboard, copy Cloud Name, API Key, API Secret
 
-**Gmail SMTP (signup verification and password-reset codes):**
-1. Enable 2-Step Verification for the Gmail account used to send app email.
-2. Create a Google App Password in that account’s security settings. Use the App Password, not the normal Gmail password.
-3. Set `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` in `backend/.env` (and in the production host’s backend environment settings). Never put these values in frontend variables or commit them.
-4. Keep the default host and port for Gmail (`smtp.gmail.com`, port `465`, secure `true`) unless you intentionally configure another SMTP relay.
-5. Restart/redeploy the backend after setting the variables.
+**Google Gmail API (signup verification and password-reset codes):**
+1. Enable the Gmail API in your Google Cloud Console.
+2. In `backend/`, run `npm run get:gmail-token` to generate your `GMAIL_REFRESH_TOKEN`.
+3. Set `GMAIL_USER`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN` in `backend/.env`.
+4. This sends emails via Google HTTPS API (Port 443), working seamlessly on both localhost and cloud hosts like Render Free without port blocking.
 
 New password-based accounts must verify their email with a six-digit code that expires after 10 minutes. Google sign-in accounts use Google’s verified email and do not need a second verification code. Legacy accounts remain verified.
 

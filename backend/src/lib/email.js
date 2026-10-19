@@ -1,5 +1,4 @@
 import { OAuth2Client } from 'google-auth-library';
-import nodemailer from 'nodemailer';
 
 const buildMessage = (otp, purpose) => {
   const messages = {
@@ -143,54 +142,18 @@ const sendWithResend = async ({ to, subject, text, html }) => {
   return result;
 };
 
-const sendWithSmtp = async ({ to, subject, text, html }) => {
-  const user = (process.env.SMTP_USER || '').trim();
-  const password = (process.env.SMTP_PASS || '').replace(/\s/g, '');
-  const missing = [];
-  if (!user) missing.push('SMTP_USER');
-  if (!password) missing.push('SMTP_PASS');
-  if (missing.length) {
-    throw new Error(`Email service is not configured. Set BREVO_API_KEY (recommended for Render Free) or SMTP_USER and SMTP_PASS. Missing: ${missing.join(', ')}.`);
-  }
-
-  const port = Number(process.env.SMTP_PORT || 465);
-  const secureSetting = (process.env.SMTP_SECURE || '').trim().toLowerCase();
-  const transporter = nodemailer.createTransport({
-    host: (process.env.SMTP_HOST || 'smtp.gmail.com').trim(),
-    port,
-    secure: secureSetting ? secureSetting === 'true' : port === 465,
-    auth: { user, pass: password },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-  });
-
-  const from = (process.env.SMTP_FROM || '').trim() || `ChatKaro <${user}>`;
-  try {
-    await transporter.sendMail({ from, to, subject, text, html });
-  } catch (error) {
-    if (error?.code === 'ETIMEDOUT' || error?.code === 'ESOCKET' || error?.code === 'ECONNECTION') {
-      throw new Error('Gmail SMTP connection timed out. Note: Render Free blocks outbound SMTP ports (465/587). Use BREVO_API_KEY (HTTPS API) on Render Free.');
-    }
-    if (error?.responseCode === 535 || error?.code === 'EAUTH') {
-      throw new Error('Gmail SMTP authentication failed. Check SMTP_USER and create a fresh Google App Password for SMTP_PASS.');
-    }
-    throw new Error('Gmail SMTP could not send the email. Check the SMTP configuration and server logs.');
-  }
-};
-
 export const sendOtpEmail = async (email, otp, purpose) => {
   const message = buildMessage(otp, purpose);
   const payload = { to: email, ...message };
 
   // 1. Google's official Gmail API over HTTPS (Port 443)
-  // Sends from your real Gmail account (mirajmiah964@gmail.com) and is never blocked by Render Free.
+  // Sends from your real Gmail account (GMAIL_USER) and is never blocked by cloud firewalls.
   if (process.env.GMAIL_REFRESH_TOKEN?.trim()) {
     await sendWithGmailApi(payload);
     return;
   }
 
-  // 2. Other HTTPS APIs (Port 443)
+  // 2. Alternative HTTPS APIs (Port 443)
   if (process.env.BREVO_API_KEY?.trim()) {
     await sendWithBrevo(payload);
     return;
@@ -200,6 +163,5 @@ export const sendOtpEmail = async (email, otp, purpose) => {
     return;
   }
 
-  // 3. Fallback to raw SMTP (local dev or paid hosting)
-  await sendWithSmtp(payload);
+  throw new Error('Email service is not configured. Set GMAIL_REFRESH_TOKEN, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_USER in .env.');
 };
