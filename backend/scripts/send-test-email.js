@@ -22,8 +22,24 @@ async function main() {
   console.log(`Recipient: ${recipient}`);
   console.log('--------------------------');
 
+  if (process.env.GMAIL_REFRESH_TOKEN?.trim()) {
+    console.log('⚡ Detected GMAIL_REFRESH_TOKEN in environment!');
+    console.log('Testing email delivery via Google Gmail API over HTTPS (Port 443)...\n');
+    const { sendOtpEmail } = await import('../src/lib/email.js');
+    try {
+      await sendOtpEmail(recipient, '889900', 'signup');
+      console.log(`   ✓ Test verification email successfully sent to ${recipient} via Gmail API!`);
+      console.log('   Gmail API is fully verified and ready for Render Free deployment.\n');
+      return;
+    } catch (apiErr) {
+      console.error('   ✗ Failed to send via Gmail API:');
+      console.error(apiErr.message || apiErr);
+      process.exit(1);
+    }
+  }
+
   if (!user || !pass) {
-    console.error('ERROR: SMTP_USER or SMTP_PASS is missing in .env!');
+    console.error('ERROR: SMTP_USER or SMTP_PASS (or GMAIL_REFRESH_TOKEN) is missing in .env!');
     process.exit(1);
   }
 
