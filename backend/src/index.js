@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -39,6 +39,10 @@ app.use(cookieParser());
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
+
+// Compatibility alias: handles requests sent without the /api prefix
+app.use('/auth', authRoutes);
+app.use('/messages', messageRoutes);
 
 // Serve the APK with explicit download headers instead of relying on the
 // frontend static-file handler, which can leave some mobile browsers stuck at 100%.
