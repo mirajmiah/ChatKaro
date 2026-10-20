@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema(
   {
@@ -65,6 +65,13 @@ const messageSchema = new mongoose.Schema(
     pinnedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+    },
+    delivered: {
+      type: Boolean,
+      default: false,
+    },
+    deliveredAt: {
+      type: Date,
     },
     read: {
       type: Boolean,

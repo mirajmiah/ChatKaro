@@ -83,6 +83,8 @@ export default function MessageBubble({
   isSelected = false,
   onToggleSelection,
   onStartSelection,
+  isSameSenderAsPrev = false,
+  isSameSenderAsNext = false,
 }) {
   const { language, t } = useTranslation();
   const isMine = String(message.senderId) === String(authUser?._id);
@@ -208,7 +210,9 @@ export default function MessageBubble({
     <div
       id={`message-${message._id}`}
       onClick={selectionMode ? onToggleSelection : undefined}
-      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg bg-primary/10' : ''}`}
+      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 transition-all duration-150 ${
+        isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'
+      } ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg bg-primary/10' : ''}`}
     >
       {selectionMode && (
         <button
@@ -223,9 +227,11 @@ export default function MessageBubble({
           {isSelected ? <CheckCircle2 size={21} /> : <Circle size={21} />}
         </button>
       )}
-      {/* Avatar */}
+      {/* Avatar — only render on the last message of consecutive group */}
       <div className="chat-image avatar">
-        {avatar ? (
+        {isSameSenderAsNext ? (
+          <div className="h-8 w-8" />
+        ) : avatar ? (
           <button
             type="button"
             onClick={(event) => {
@@ -269,10 +275,10 @@ export default function MessageBubble({
           }
           toggleMenu(event);
         }}
-        className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words ${
+        className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words shadow-sm ${
           isMine
-            ? 'chat-bubble-primary text-primary-content'
-            : 'bg-base-300 text-base-content'
+            ? `chat-bubble-primary text-primary-content ${isSameSenderAsPrev ? 'rounded-tr-md' : ''} ${isSameSenderAsNext ? 'rounded-br-md' : ''}`
+            : `bg-base-300 text-base-content ${isSameSenderAsPrev ? 'rounded-tl-md' : ''} ${isSameSenderAsNext ? 'rounded-bl-md' : ''}`
         }`}
       >
         {menuOpen && createPortal(
@@ -494,9 +500,31 @@ export default function MessageBubble({
         document.body
       )}
 
-      {/* Timestamp */}
-      <div className="chat-footer opacity-50 text-xs mt-0.5">
-        {formatMsgTime(message.createdAt, language)}
+      {/* Timestamp & Status ticks */}
+      <div className="chat-footer flex items-center gap-1 opacity-70 text-[11px] mt-0.5">
+        <span>{formatMsgTime(message.createdAt, language)}</span>
+        {isMine && !message.deletedAt && (
+          <span
+            className="inline-flex items-center ml-0.5 select-none"
+            title={message.read ? t('Read') : message.delivered ? t('Delivered') : t('Sent')}
+          >
+            {message.read ? (
+              <span className="flex items-center text-primary font-bold">
+                <Check size={13} className="-mr-1.5" strokeWidth={2.5} />
+                <Check size={13} strokeWidth={2.5} />
+              </span>
+            ) : message.delivered ? (
+              <span className="flex items-center text-base-content/60">
+                <Check size={13} className="-mr-1.5" strokeWidth={2} />
+                <Check size={13} strokeWidth={2} />
+              </span>
+            ) : (
+              <span className="text-base-content/60">
+                <Check size={13} strokeWidth={2} />
+              </span>
+            )}
+          </span>
+        )}
       </div>
     </div>
   );

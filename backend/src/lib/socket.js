@@ -1,4 +1,4 @@
-﻿import { Server } from 'socket.io';
+import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 
@@ -16,6 +16,12 @@ export const emitToUser = (userId, event, payload) => {
 export const emitToAll = (event, payload) => {
   if (!io) return;
   io.emit(event, payload);
+};
+
+export const isUserOnline = (userId) => {
+  if (!userId) return false;
+  const sockets = onlineUsers.get(userId.toString());
+  return Boolean(sockets && sockets.size > 0);
 };
 
 export const initSocket = (httpServer) => {
@@ -52,6 +58,18 @@ export const initSocket = (httpServer) => {
     onlineUsers.set(userId, sockets);
     socket.emit('onlineUsers', Array.from(onlineUsers.keys()));
     if (wasOffline) io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+
+    socket.on('typing:start', ({ receiverId }) => {
+      if (receiverId) {
+        emitToUser(receiverId, 'typing:start', { senderId: userId });
+      }
+    });
+
+    socket.on('typing:stop', ({ receiverId }) => {
+      if (receiverId) {
+        emitToUser(receiverId, 'typing:stop', { senderId: userId });
+      }
+    });
 
     socket.on('disconnect', () => {
       const activeSockets = onlineUsers.get(userId);

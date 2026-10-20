@@ -9,7 +9,7 @@ const MAX_IMAGE_VIDEO_SIZE = 10 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
 
 export default function ChatInput({ replyTarget, onCancelReply }) {
-  const { selectedUser, sendMessage } = useChatStore();
+  const { selectedUser, sendMessage, sendTypingStart, sendTypingStop } = useChatStore();
   const { authUser } = useAuthStore();
   const { t } = useTranslation();
   const [text, setText] = useState('');
@@ -17,7 +17,15 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
   const shouldRefocusAfterSend = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (selectedUser?._id) sendTypingStop(selectedUser._id);
+    };
+  }, [selectedUser?._id, sendTypingStop]);
 
   useEffect(() => {
     if (replyTarget) textareaRef.current?.focus();
@@ -87,6 +95,14 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+
+    if (selectedUser?._id) {
+      sendTypingStart(selectedUser._id);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingStop(selectedUser._id);
+      }, 1500);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -100,6 +116,9 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     const trimmed = text.trim();
     if (!trimmed && !attachment) return;
     if (!selectedUser) return;
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    sendTypingStop(selectedUser._id);
 
     setIsSending(true);
     try {
@@ -133,7 +152,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const canSend = (text.trim().length > 0 || attachment !== null) && !isSending;
 
   return (
-    <div className="chat-composer shrink-0 border-t border-base-300 bg-base-200 px-3 py-3 sm:px-4">
+    <div className="chat-composer shrink-0 border-t border-base-300 bg-base-200/85 backdrop-blur-md px-3 py-3 sm:px-4">
       {/* Attachment preview */}
       {attachment && (
         <div className="relative inline-block mb-3">

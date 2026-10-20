@@ -17,7 +17,7 @@ function InitialsAvatar({ name }) {
 }
 
 export default function ChatHeader({ messages, onJumpToMessage }) {
-  const { selectedUser, selectUser } = useChatStore();
+  const { selectedUser, selectUser, typingUsers } = useChatStore();
   const { onlineUsers } = useAuthStore();
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
@@ -25,9 +25,10 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
   if (!selectedUser) return null;
 
   const isOnline = onlineUsers.includes(selectedUser._id);
+  const isTyping = Boolean(typingUsers[selectedUser._id]);
 
   return (
-    <div className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-200 px-4 py-3">
+    <div className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-200/85 backdrop-blur-md px-4 py-3">
       {/* Back button — mobile only */}
       <button
         onClick={() => selectUser(null)}
@@ -50,9 +51,20 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold truncate leading-tight">{selectedUser.fullName}</p>
-          <p className={`text-xs ${isOnline ? 'text-success' : 'text-base-content/50'}`}>
-            {t(isOnline ? 'Online' : 'Offline')}
-          </p>
+          {isTyping ? (
+            <p className="text-xs text-primary font-medium flex items-center gap-1.5 animate-pulse">
+              <span>{t('typing')}</span>
+              <span className="inline-flex items-center gap-0.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" />
+              </span>
+            </p>
+          ) : (
+            <p className={`text-xs ${isOnline ? 'text-success' : 'text-base-content/50'}`}>
+              {t(isOnline ? 'Online' : 'Offline')}
+            </p>
+          )}
         </div>
         <Info size={17} className="mr-1 shrink-0 text-base-content/50" />
       </button>

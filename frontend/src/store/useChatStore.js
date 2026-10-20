@@ -15,6 +15,7 @@ export const useChatStore = create((set, get) => ({
   messageRequests: [],
   selectedUser: null,
   messages: [],
+  typingUsers: {},
   isLoadingUsers: false,
   isLoadingMessages: false,
 
@@ -386,11 +387,48 @@ fetchUsers: async () => {
       }));
     };
 
+    const onTypingStart = ({ senderId }) => {
+      if (!senderId) return;
+      set((state) => ({
+        typingUsers: { ...state.typingUsers, [senderId]: true },
+      }));
+    };
+
+    const onTypingStop = ({ senderId }) => {
+      if (!senderId) return;
+      set((state) => ({
+        typingUsers: { ...state.typingUsers, [senderId]: false },
+      }));
+    };
+
+    const onMessagesRead = ({ readerId, senderId }) => {
+      set((state) => ({
+        messages: state.messages.map((item) =>
+          (String(item.receiverId) === String(readerId) || String(item.senderId) === String(senderId))
+            ? { ...item, read: true, delivered: true }
+            : item
+        ),
+      }));
+    };
+
     socket.on('newMessage', onNewMessage);
     socket.on('messageEdited', onMessageEdited);
     socket.on('messageDeleted', onMessageDeleted);
     socket.on('messagePinned', onMessagePinned);
     socket.on('profileUpdated', onProfileUpdated);
+    socket.on('typing:start', onTypingStart);
+    socket.on('typing:stop', onTypingStop);
+    socket.on('messagesRead', onMessagesRead);
+  },
+
+  sendTypingStart: (receiverId) => {
+    const socket = useAuthStore.getState().socket;
+    if (socket && receiverId) socket.emit('typing:start', { receiverId });
+  },
+
+  sendTypingStop: (receiverId) => {
+    const socket = useAuthStore.getState().socket;
+    if (socket && receiverId) socket.emit('typing:stop', { receiverId });
   },
 
   unsubscribeFromMessages: () => {
@@ -401,5 +439,8 @@ fetchUsers: async () => {
     socket.off('messageDeleted');
     socket.off('messagePinned');
     socket.off('profileUpdated');
+    socket.off('typing:start');
+    socket.off('typing:stop');
+    socket.off('messagesRead');
   },
 }));

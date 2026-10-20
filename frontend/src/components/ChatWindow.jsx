@@ -22,7 +22,7 @@ function BubbleSkeleton({ align = 'start' }) {
 }
 
 export default function ChatWindow() {
-  const { selectedUser, messages, users, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
+  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
   const { authUser } = useAuthStore();
   const { t } = useTranslation();
   const bottomRef = useRef(null);
@@ -32,6 +32,8 @@ export default function ChatWindow() {
   const [pinClock, setPinClock] = useState(Date.now());
   const previousMessageCount = useRef(0);
 
+  const isOtherUserTyping = Boolean(selectedUser && typingUsers[selectedUser._id]);
+
   useEffect(() => {
     if (!selectedUser) return;
     fetchMessages(selectedUser._id);
@@ -39,13 +41,13 @@ export default function ChatWindow() {
     return () => unsubscribeFromMessages();
   }, [selectedUser?._id]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change or other user starts typing
   useEffect(() => {
-    if (messages.length > previousMessageCount.current) {
+    if (messages.length > previousMessageCount.current || isOtherUserTyping) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
     previousMessageCount.current = messages.length;
-  }, [messages]);
+  }, [messages, isOtherUserTyping]);
 
   useEffect(() => {
     setReplyTarget(null);
@@ -134,13 +136,19 @@ export default function ChatWindow() {
 
   if (!selectedUser) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-base-content/30 p-8 text-center">
-        <div className="w-20 h-20 rounded-2xl bg-base-300 flex items-center justify-center">
-          <MessageSquare size={36} strokeWidth={1} />
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-base-content/40 p-8 text-center bg-base-100/50">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-lg shadow-primary/5 transition-transform hover:scale-105 duration-300">
+            <MessageSquare size={44} strokeWidth={1.5} />
+          </div>
+          <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-primary"></span>
+          </span>
         </div>
-        <div>
-          <p className="text-lg font-semibold">{t('No conversation selected')}</p>
-          <p className="text-sm mt-1">{t('Pick a contact from the sidebar to start chatting')}</p>
+        <div className="max-w-sm">
+          <h2 className="text-xl font-bold text-base-content tracking-tight">{t('Welcome to ChatKaro')}</h2>
+          <p className="text-sm mt-1 text-base-content/60 leading-relaxed">{t('Pick a contact from the sidebar or search by email to start chatting.')}</p>
         </div>
       </div>
     );
@@ -226,25 +234,62 @@ export default function ChatWindow() {
             <p className="text-sm">{t('No messages yet. Say hello! 👋')}</p>
           </div>
         ) : (
-          messages.map((msg) => (
-            <MessageBubble
-              key={msg._id}
-              message={msg}
-              authUser={authUser}
-              users={users}
-              editMessage={editMessage}
-              deleteMessage={deleteMessage}
-              toggleStarMessage={toggleStarMessage}
-              togglePinMessage={togglePinMessage}
-              forwardMessage={forwardMessage}
-              onReply={(message) => setReplyTarget(message)}
-              jumpToMessage={jumpToMessage}
-              selectionMode={selectedCount > 0}
-              isSelected={selectedMessageIds.includes(msg._id)}
-              onToggleSelection={() => toggleMessageSelection(msg._id)}
-              onStartSelection={() => setSelectedMessageIds([msg._id])}
-            />
-          ))
+          messages.map((msg, index) => {
+            const prevMsg = messages[index - 1];
+            const nextMsg = messages[index + 1];
+            const isSameSenderAsPrev = Boolean(
+              prevMsg &&
+              String(prevMsg.senderId) === String(msg.senderId) &&
+              new Date(msg.createdAt) - new Date(prevMsg.createdAt) < 2 * 60 * 1000
+            );
+            const isSameSenderAsNext = Boolean(
+              nextMsg &&
+              String(nextMsg.senderId) === String(msg.senderId) &&
+              new Date(nextMsg.createdAt) - new Date(msg.createdAt) < 2 * 60 * 1000
+            );
+
+            return (
+              <MessageBubble
+                key={msg._id}
+                message={msg}
+                authUser={authUser}
+                users={users}
+                editMessage={editMessage}
+                deleteMessage={deleteMessage}
+                toggleStarMessage={toggleStarMessage}
+                togglePinMessage={togglePinMessage}
+                forwardMessage={forwardMessage}
+                onReply={(message) => setReplyTarget(message)}
+                jumpToMessage={jumpToMessage}
+                selectionMode={selectedCount > 0}
+                isSelected={selectedMessageIds.includes(msg._id)}
+                onToggleSelection={() => toggleMessageSelection(msg._id)}
+                onStartSelection={() => setSelectedMessageIds([msg._id])}
+                isSameSenderAsPrev={isSameSenderAsPrev}
+                isSameSenderAsNext={isSameSenderAsNext}
+              />
+            );
+          })
+        )}
+
+        {/* Live typing indicator bubble */}
+        {isOtherUserTyping && (
+          <div className="chat chat-start px-4 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2">
+            <div className="chat-image avatar">
+              {selectedUser.profilePic ? (
+                <img src={selectedUser.profilePic} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs">
+                  {selectedUser.fullName?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
+            <div className="chat-bubble bg-base-300 text-base-content flex items-center gap-1.5 py-2.5 px-4 rounded-2xl shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" />
+            </div>
+          </div>
         )}
         <div ref={bottomRef} />
       </div>

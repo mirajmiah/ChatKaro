@@ -1,11 +1,11 @@
-﻿import Message from '../models/message.model.js';
+import Message from '../models/message.model.js';
 import User from '../models/user.model.js';
 import ContactRequest from '../models/contactRequest.model.js';
 import mongoose from 'mongoose';
 import { randomUUID } from 'crypto';
 import { Readable } from 'node:stream';
 import cloudinary from '../lib/cloudinary.js';
-import { emitToUser } from '../lib/socket.js';
+import { emitToUser, isUserOnline } from '../lib/socket.js';
 
 const MAX_IMAGE_VIDEO_SIZE = 10 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
@@ -563,10 +563,11 @@ export const getMessages = async (req, res) => {
         read: false,
         messageRequestStatus: { $ne: 'pending' },
       },
-      { read: true }
+      { $set: { read: true, delivered: true } }
     );
     if (readResult.modifiedCount > 0) {
-      emitToUser(myId.toString(), 'messagesRead', { senderId: targetId.toString() });
+      emitToUser(myId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: targetId.toString() });
+      emitToUser(targetId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: targetId.toString() });
     }
 
     return res.status(200).json(messages.map((message) => serializeMessage(message, myId)));
@@ -662,10 +663,11 @@ export const markMessagesRead = async (req, res) => {
         deletedAt: { $exists: false },
         deletedFor: { $ne: myId },
       },
-      { $set: { read: true } }
+      { $set: { read: true, delivered: true } }
     );
     if (result.modifiedCount > 0) {
-      emitToUser(myId.toString(), 'messagesRead', { senderId: senderId.toString() });
+      emitToUser(myId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: senderId.toString() });
+      emitToUser(senderId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: senderId.toString() });
     }
     return res.status(200).json({ markedRead: result.modifiedCount });
   } catch (error) {
@@ -774,6 +776,7 @@ export const sendMessage = async (req, res) => {
       else documentUrl = uploadResult.secure_url;
     }
 
+    const isReceiverOnline = isUserOnline(receiverId);
     const message = await Message.create({
       senderId,
       receiverId,
@@ -784,6 +787,8 @@ export const sendMessage = async (req, res) => {
       documentName: documentUrl ? documentName.trim() : undefined,
       replyTo: replyTarget?._id,
       messageRequestStatus: isMessageRequest ? 'pending' : undefined,
+      delivered: isReceiverOnline,
+      deliveredAt: isReceiverOnline ? new Date() : undefined,
     });
     await message.populate('replyTo', REPLY_PREVIEW_FIELDS);
 
