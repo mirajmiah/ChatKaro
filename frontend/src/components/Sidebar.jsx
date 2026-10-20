@@ -150,7 +150,7 @@ export default function Sidebar() {
     try {
       const response = await sendContactRequest(contactSearchResult.email);
       setContactSearchResult((result) => result
-        ? { ...result, requestStatus: 'sent', requestId: response.request?._id || null, isHidden: false }
+        ? { ...result, requestStatus: 'sent', requestId: response.requestId || null, isHidden: false }
         : result);
     } catch {
       // The chat store displays the error toast.
