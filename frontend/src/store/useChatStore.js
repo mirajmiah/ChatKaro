@@ -114,6 +114,17 @@ fetchUsers: async () => {
     }
   },
 
+  withdrawContactRequest: async (requestId) => {
+    try {
+      const response = await api.delete(`/messages/contacts/requests/${requestId}`);
+      toast.success(translateCurrent(response.data.message));
+      return response.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to withdraw contact request'));
+      throw err;
+    }
+  },
+
   respondToMessageRequest: async (senderId, accept) => {
     try {
       const response = accept
