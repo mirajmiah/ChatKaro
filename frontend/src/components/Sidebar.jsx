@@ -143,7 +143,9 @@ export default function Sidebar() {
   };
 
   const handleSendContactRequest = async () => {
-    if (!contactSearchResult || contactSearchResult.requestStatus) return;
+    // A previously accepted contact may be hidden after removal. In that case,
+    // allow a new request even though search still reports requestStatus=accepted.
+    if (!contactSearchResult || (contactSearchResult.requestStatus && !contactSearchResult.isHidden)) return;
     setIsAddingContact(true);
     try {
       await sendContactRequest(contactSearchResult.email);
