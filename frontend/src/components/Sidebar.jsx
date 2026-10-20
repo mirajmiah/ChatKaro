@@ -49,6 +49,7 @@ export default function Sidebar() {
     sendContactRequest,
     respondToContactRequest,
     respondToMessageRequest,
+    withdrawContactRequest,
     deleteChat,
     removeContact,
     isLoadingUsers,
@@ -147,9 +148,24 @@ export default function Sidebar() {
     if (!contactSearchResult || (contactSearchResult.requestStatus && !contactSearchResult.isHidden)) return;
     setIsAddingContact(true);
     try {
-      await sendContactRequest(contactSearchResult.email);
+      const response = await sendContactRequest(contactSearchResult.email);
       setContactSearchResult((result) => result
-        ? { ...result, requestStatus: 'sent', isHidden: false }
+        ? { ...result, requestStatus: 'sent', requestId: response.request?._id || null, isHidden: false }
+        : result);
+    } catch {
+      // The chat store displays the error toast.
+    } finally {
+      setIsAddingContact(false);
+    }
+  };
+
+  const handleWithdrawContactRequest = async () => {
+    if (!contactSearchResult?.requestId) return;
+    setIsAddingContact(true);
+    try {
+      await withdrawContactRequest(contactSearchResult.requestId);
+      setContactSearchResult((result) => result
+        ? { ...result, requestStatus: null, requestId: null }
         : result);
     } catch {
       // The chat store displays the error toast.
@@ -281,14 +297,14 @@ export default function Sidebar() {
             </div>
             <button
               type="button"
-              onClick={handleSendContactRequest}
-              disabled={isAddingContact || Boolean(contactSearchResult.requestStatus && !contactSearchResult.isHidden)}
-              className="btn btn-primary btn-xs shrink-0"
+              onClick={contactSearchResult.requestStatus === 'sent' ? handleWithdrawContactRequest : handleSendContactRequest}
+              disabled={isAddingContact || Boolean(contactSearchResult.requestStatus && contactSearchResult.requestStatus !== 'sent' && !contactSearchResult.isHidden)}
+              className={`btn btn-xs shrink-0 ${contactSearchResult.requestStatus === 'sent' ? 'btn-outline' : 'btn-primary'}`}
             >
               {isAddingContact
                 ? <span className="loading loading-spinner loading-xs" />
                 : contactSearchResult.requestStatus === 'sent'
-                  ? t('Sent')
+                  ? t('Withdraw request')
                   : contactSearchResult.isHidden
                     ? <><UserPlus size={14} /> {t('Request again')}</>
                     : contactSearchResult.requestStatus === 'received'
