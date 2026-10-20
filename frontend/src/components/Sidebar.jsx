@@ -6,7 +6,19 @@ import { useAuthStore } from '../store/useAuthStore.js';
 import { formatLastSeen } from '../lib/utils.js';
 import { useTranslation } from '../lib/i18n.js';
 import DocumentLink from './DocumentLink.jsx';
-import Avatar, { InitialsAvatar } from './Avatar.jsx';
+import Avatar from './Avatar.jsx';
+
+function UserSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-3 animate-pulse">
+      <div className="w-11 h-11 rounded-full bg-base-300 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 bg-base-300 rounded w-3/4" />
+        <div className="h-2 bg-base-300 rounded w-1/2" />
+      </div>
+    </div>
+  );
+}
 
 export default function Sidebar() {
   const { language, t } = useTranslation();
