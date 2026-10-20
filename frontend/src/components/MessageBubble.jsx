@@ -235,7 +235,7 @@ export default function MessageBubble({
     }
 
     const bubble = event.currentTarget.getBoundingClientRect();
-    setMenuPosition({ top: bubble.bottom + 8, left: bubble.right - 208 });
+    setMenuPosition({ top: bubble.bottom + 8, left: bubble.right - 224 });
     setMenuOpen(true);
   };
 
@@ -243,7 +243,7 @@ export default function MessageBubble({
     <div
       id={`message-${message._id}`}
       onClick={selectionMode ? onToggleSelection : undefined}
-      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 group relative transition-all duration-150 ${
+      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 relative transition-all duration-150 ${
         isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'
       } ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg bg-primary/10' : ''}`}
     >
@@ -289,36 +289,6 @@ export default function MessageBubble({
         />
       )}
 
-      {/* Quick reaction floating pill on hover (desktop) */}
-      {!message.deletedAt && !selectionMode && (
-        <div
-          className={`hidden sm:flex opacity-0 group-hover:opacity-100 transition-all duration-150 absolute -top-5 ${
-            isMine ? 'right-12' : 'left-12'
-          } z-20 items-center gap-0.5 rounded-full border border-base-300 bg-base-100/95 px-1.5 py-0.5 shadow-md backdrop-blur-md pointer-events-none group-hover:pointer-events-auto`}
-        >
-          {QUICK_REACTIONS.map((emoji) => {
-            const hasReacted = Boolean(reactionGroups[emoji]?.hasMine);
-            return (
-              <button
-                key={emoji}
-                type="button"
-                disabled={isBusy}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleToggleReaction(emoji);
-                }}
-                className={`h-7 w-7 flex items-center justify-center text-sm rounded-full transition-transform hover:scale-130 active:scale-95 ${
-                  hasReacted ? 'bg-primary/20 scale-110' : 'hover:bg-base-200'
-                }`}
-                title={hasReacted ? t('Remove {emoji}', { emoji }) : emoji}
-              >
-                {emoji}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Bubble */}
       <div
         ref={bubbleRef}
@@ -356,11 +326,11 @@ export default function MessageBubble({
               overflowY: 'auto',
               zIndex: 1000,
             }}
-            className="menu menu-sm w-52 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-xl"
+            className="menu menu-sm w-56 max-w-[calc(100vw-1rem)] rounded-2xl border border-base-300 bg-base-100 p-2 text-base-content shadow-2xl backdrop-blur-md"
           >
               {!message.deletedAt && <>
-                <li className="p-1 mb-1 border-b border-base-300">
-                  <div className="flex items-center justify-between gap-1 w-full p-0 hover:bg-transparent">
+                <li className="p-1 mb-1.5 border-b border-base-300/80">
+                  <div className="flex items-center justify-between gap-1 w-full p-0.5 hover:bg-transparent">
                     {QUICK_REACTIONS.map((emoji) => {
                       const hasReacted = Boolean(reactionGroups[emoji]?.hasMine);
                       return (
@@ -372,8 +342,8 @@ export default function MessageBubble({
                             handleToggleReaction(emoji);
                             closeMenu();
                           }}
-                          className={`btn btn-ghost btn-xs btn-circle text-base hover:scale-125 transition-transform ${
-                            hasReacted ? 'bg-primary/20 scale-110' : ''
+                          className={`h-8 w-8 flex items-center justify-center text-lg rounded-full transition-transform hover:scale-130 active:scale-90 ${
+                            hasReacted ? 'bg-primary/20 scale-110 ring-2 ring-primary/40' : 'hover:bg-base-200'
                           }`}
                           title={hasReacted ? t('Remove {emoji}', { emoji }) : emoji}
                         >
