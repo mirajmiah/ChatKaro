@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { FileText, Paperclip, Send, Smile, X } from 'lucide-react';
+import { FileText, Paperclip, Send, Smile, X, Mic, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -17,14 +17,25 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const [attachment, setAttachment] = useState(null); // { data, type }
   const [isSending, setIsSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const shouldRefocusAfterSend = useRef(false);
+  const mediaRecorderRef = useRef(null);
+  const audioStreamRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
       if (selectedUser?._id) sendTypingStop(selectedUser._id);
     };
   }, [selectedUser?._id, sendTypingStop]);
@@ -171,6 +182,132 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     }
   };
 
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error(t('Voice recording is not supported in this browser.'));
+      return;
+    }
+    setShowEmojiPicker(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const mimeType = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+      ].find((type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) || '';
+
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.start(200);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+
+      if (selectedUser?._id) {
+        sendTypingStart(selectedUser._id);
+      }
+    } catch (err) {
+      console.error('Microphone error:', err);
+      toast.error(t('Microphone access was denied or is unavailable.'));
+    }
+  };
+
+  const cancelRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      audioStreamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingDuration(0);
+    if (selectedUser?._id) {
+      sendTypingStop(selectedUser._id);
+    }
+  };
+
+  const stopAndSendRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === 'inactive') return;
+
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+
+    const durationToSend = recordingDuration;
+
+    recorder.onstop = () => {
+      const mimeType = recorder.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+      }
+      audioChunksRef.current = [];
+      setIsRecording(false);
+      setRecordingDuration(0);
+
+      if (selectedUser?._id) {
+        sendTypingStop(selectedUser._id);
+      }
+
+      if (durationToSend < 1) {
+        toast.error(t('Voice note is too short.'));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result;
+        if (!base64Data || typeof base64Data !== 'string') {
+          toast.error(t('Failed to process recorded audio.'));
+          return;
+        }
+
+        setIsSending(true);
+        try {
+          await sendMessage(selectedUser._id, {
+            audio: base64Data,
+            audioDuration: durationToSend,
+            replyTo: replyTarget?._id,
+          });
+          onCancelReply();
+        } catch {
+          // Toast handled by store
+        } finally {
+          setIsSending(false);
+        }
+      };
+      reader.readAsDataURL(audioBlob);
+    };
+
+    recorder.stop();
+  };
+
   const canSend = (text.trim().length > 0 || attachment !== null) && !isSending;
 
   return (
@@ -228,71 +365,145 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
         </div>
       )}
 
-      {/* Input row */}
-      <div className="flex items-end gap-2">
-        {/* File attach */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
-            attachment ? 'text-primary' : 'text-base-content/50'
-          } hover:text-base-content`}
-          aria-label={t('Attach file')}
-        >
-          <Paperclip size={20} />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+      {/* Voice recording active bar */}
+      {isRecording ? (
+        <div className="flex items-center justify-between gap-3 bg-base-100 rounded-2xl px-4 py-2 border border-error/40 shadow-inner animate-in fade-in duration-150">
+          <div className="flex items-center gap-3">
+            {/* Pulsing red record indicator */}
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
+            </span>
 
-        {/* Emoji picker button */}
-        <button
-          type="button"
-          onClick={() => setShowEmojiPicker((prev) => !prev)}
-          className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
-            showEmojiPicker ? 'text-primary bg-primary/10' : 'text-base-content/50'
-          } hover:text-base-content`}
-          aria-label={t('Insert emoji')}
-        >
-          <Smile size={20} />
-        </button>
+            {/* Recording timer */}
+            <span className="font-mono text-sm font-semibold tracking-wider text-error">
+              {Math.floor(recordingDuration / 60)}:{recordingDuration % 60 < 10 ? '0' : ''}{recordingDuration % 60}
+            </span>
 
-        {/* Textarea */}
-        <div className="flex-1 relative">
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={t('Type a message…')}
-            rows={1}
-            className="textarea textarea-bordered w-full resize-none overflow-y-auto bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-2"
-            style={{ minHeight: '2.5rem', maxHeight: '7.5rem' }}
-            disabled={isSending}
-          />
+            {/* Animated sound wave bars */}
+            <div className="hidden sm:flex items-center gap-1 h-5">
+              {[10, 18, 8, 22, 14, 26, 12, 18, 20, 14, 18, 8].map((h, i) => (
+                <span
+                  key={i}
+                  style={{ height: `${h}px` }}
+                  className="w-1 bg-error/70 rounded-full animate-pulse"
+                />
+              ))}
+            </div>
+
+            <span className="text-xs text-base-content/60 hidden md:inline italic">
+              {t('Recording voice note…')}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Cancel/Discard button */}
+            <button
+              type="button"
+              onClick={cancelRecording}
+              className="btn btn-ghost btn-circle btn-sm text-error hover:bg-error/15"
+              aria-label={t('Cancel recording')}
+              title={t('Cancel recording')}
+            >
+              <Trash2 size={18} />
+            </button>
+
+            {/* Send voice note button */}
+            <button
+              type="button"
+              onClick={stopAndSendRecording}
+              disabled={isSending}
+              className="btn btn-primary btn-circle btn-sm shadow-md"
+              aria-label={t('Send voice message')}
+              title={t('Send voice message')}
+            >
+              {isSending ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                <Send size={15} />
+              )}
+            </button>
+          </div>
         </div>
+      ) : (
+        /* Regular input row */
+        <div className="flex items-end gap-2">
+          {/* File attach */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
+              attachment ? 'text-primary' : 'text-base-content/50'
+            } hover:text-base-content`}
+            aria-label={t('Attach file')}
+          >
+            <Paperclip size={20} />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
-        {/* Send button */}
-        <button
-          type="button"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={handleSubmit}
-          disabled={!canSend}
-          className="btn btn-primary btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 transition-all"
-          aria-label={t('Send message')}
-        >
-          {isSending ? (
-            <span className="loading loading-spinner loading-xs" />
+          {/* Emoji picker button */}
+          <button
+            type="button"
+            onClick={() => setShowEmojiPicker((prev) => !prev)}
+            className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
+              showEmojiPicker ? 'text-primary bg-primary/10' : 'text-base-content/50'
+            } hover:text-base-content`}
+            aria-label={t('Insert emoji')}
+          >
+            <Smile size={20} />
+          </button>
+
+          {/* Textarea */}
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              placeholder={t('Type a message…')}
+              rows={1}
+              className="textarea textarea-bordered w-full resize-none overflow-y-auto bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-2"
+              style={{ minHeight: '2.5rem', maxHeight: '7.5rem' }}
+              disabled={isSending}
+            />
+          </div>
+
+          {/* Action button: Send if text/attachment, or Mic if empty */}
+          {canSend ? (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={handleSubmit}
+              className="btn btn-primary btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 transition-all shadow-sm"
+              aria-label={t('Send message')}
+            >
+              {isSending ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                <Send size={16} />
+              )}
+            </button>
           ) : (
-            <Send size={16} />
+            <button
+              type="button"
+              onClick={startRecording}
+              disabled={isSending}
+              className="btn btn-primary btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 transition-all shadow-sm hover:scale-105 active:scale-95"
+              aria-label={t('Record voice note')}
+              title={t('Record voice note')}
+            >
+              <Mic size={18} />
+            </button>
           )}
-        </button>
-      </div>
+        </div>
+      )}
 
       <p className="mt-1.5 ml-10 hidden text-xs text-base-content/30 sm:block">
         {t('Shift + Enter for new line · Paste images from clipboard')}

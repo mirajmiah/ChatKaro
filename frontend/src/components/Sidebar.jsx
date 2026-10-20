@@ -389,7 +389,7 @@ export default function Sidebar() {
               const message = request.latestMessage;
               const preview = message.text
                 || message.documentName
-                || (message.image ? t('Photo') : message.video ? t('Video') : t('Attachment'));
+                || (message.image ? t('Photo') : message.video ? t('Video') : message.audio ? `🎤 ${t('Voice message')}` : t('Attachment'));
               return (
                 <div key={request.sender._id} className="flex items-center gap-2 px-3 py-2">
                   {request.sender.profilePic ? (
@@ -454,7 +454,7 @@ export default function Sidebar() {
             const messagePreview = latestMessage && (
               latestMessage.text
               || latestMessage.documentName
-              || (latestMessage.image ? t('Photo') : latestMessage.video ? t('Video') : t('Attachment'))
+              || (latestMessage.image ? t('Photo') : latestMessage.video ? t('Video') : latestMessage.audio ? `🎤 ${t('Voice message')}` : t('Attachment'))
             );
             const messageTime = latestMessage?.createdAt
               ? new Date(latestMessage.createdAt).toLocaleTimeString(

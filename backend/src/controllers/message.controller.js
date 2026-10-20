@@ -13,7 +13,7 @@ const MAX_IMAGE_VIDEO_BASE64_LENGTH = Math.ceil(MAX_IMAGE_VIDEO_SIZE * 4 / 3) + 
 const MAX_DOCUMENT_BASE64_LENGTH = Math.ceil(MAX_DOCUMENT_SIZE * 4 / 3) + 1024;
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const DELETE_WINDOW_MS = 4 * 60 * 60 * 1000;
-const REPLY_PREVIEW_FIELDS = 'text image video document documentName senderId deletedAt';
+const REPLY_PREVIEW_FIELDS = 'text image video audio audioDuration document documentName senderId deletedAt';
 
 class AttachmentValidationError extends Error {}
 
@@ -168,6 +168,8 @@ export const getUsers = async (req, res) => {
                 text: '$text',
                 image: '$image',
                 video: '$video',
+                audio: '$audio',
+                audioDuration: '$audioDuration',
                 documentName: '$documentName',
                 senderId: '$senderId',
                 createdAt: '$createdAt',
@@ -726,9 +728,9 @@ export const sendMessage = async (req, res) => {
     }
     const isMessageRequest = await hasHiddenConnection(senderId, receiverId);
 
-    let { text, image, video, document, documentName, replyTo } = req.body;
+    let { text, image, video, audio, audioDuration, document, documentName, replyTo } = req.body;
 
-    if (!text && !image && !video && !document) {
+    if (!text && !image && !video && !audio && !document) {
       return res.status(400).json({ message: 'Message must contain text or an attachment.' });
     }
 
@@ -758,9 +760,11 @@ export const sendMessage = async (req, res) => {
 
     let imageUrl;
     let videoUrl;
+    let audioUrl;
+    let audioDurationNum;
     let documentUrl;
-    if (image || video || document) {
-      const media = image || video || document;
+    if (image || video || audio || document) {
+      const media = image || video || audio || document;
       const maxBase64Length = document
         ? MAX_DOCUMENT_BASE64_LENGTH
         : MAX_IMAGE_VIDEO_BASE64_LENGTH;
@@ -768,6 +772,8 @@ export const sendMessage = async (req, res) => {
         return res.status(400).json({
           message: document
             ? 'Documents must be 10 MB or smaller.'
+            : audio
+            ? 'Voice notes must be 10 MB or smaller.'
             : 'Images and videos must be 10 MB or smaller.',
         });
       }
@@ -779,9 +785,18 @@ export const sendMessage = async (req, res) => {
             resource_type: image ? 'image' : 'video',
           });
 
-      if (image) imageUrl = uploadResult.secure_url;
-      else if (video) videoUrl = uploadResult.secure_url;
-      else documentUrl = uploadResult.secure_url;
+      if (image) {
+        imageUrl = uploadResult.secure_url;
+      } else if (video) {
+        videoUrl = uploadResult.secure_url;
+      } else if (audio) {
+        audioUrl = uploadResult.secure_url;
+        audioDurationNum = typeof audioDuration === 'number' && audioDuration > 0
+          ? Math.round(audioDuration)
+          : (typeof uploadResult.duration === 'number' ? Math.round(uploadResult.duration) : undefined);
+      } else {
+        documentUrl = uploadResult.secure_url;
+      }
     }
 
     const isReceiverOnline = isUserOnline(receiverId);
@@ -791,6 +806,8 @@ export const sendMessage = async (req, res) => {
       text: text || undefined,
       image: imageUrl || undefined,
       video: videoUrl || undefined,
+      audio: audioUrl || undefined,
+      audioDuration: audioDurationNum || undefined,
       document: documentUrl || undefined,
       documentName: documentUrl ? documentName.trim() : undefined,
       replyTo: replyTarget?._id,
@@ -982,6 +999,8 @@ export const forwardMessage = async (req, res) => {
       text: source.text,
       image: source.image,
       video: source.video,
+      audio: source.audio,
+      audioDuration: source.audioDuration,
       document: source.document,
       documentName: source.documentName,
       isForwarded: true,

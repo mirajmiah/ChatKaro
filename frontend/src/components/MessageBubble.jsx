@@ -20,6 +20,7 @@ import {
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
 import DocumentLink from './DocumentLink.jsx';
+import AudioPlayer from './AudioPlayer.jsx';
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+|(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#][^\s<]*)?/gi;
 
@@ -443,7 +444,7 @@ export default function MessageBubble({
           >
             <span className="block font-semibold opacity-80">{replySender}</span>
             <span className="block truncate opacity-70">
-              {message.replyTo.deletedAt ? t('Message deleted') : message.replyTo.text || message.replyTo.documentName || (message.replyTo.image ? t('Photo') : message.replyTo.video ? t('Video') : t('Attachment'))}
+              {message.replyTo.deletedAt ? t('Message deleted') : message.replyTo.text || message.replyTo.documentName || (message.replyTo.image ? t('Photo') : message.replyTo.video ? t('Video') : message.replyTo.audio ? `🎤 ${t('Voice message')}` : t('Attachment'))}
             </span>
           </button>
         )}
@@ -517,6 +518,15 @@ export default function MessageBubble({
             className="mt-2 max-w-[280px] rounded-lg"
           />
         )}
+        {!message.deletedAt && message.audio && (
+          <div className="mt-2">
+            <AudioPlayer
+              src={message.audio}
+              duration={message.audioDuration}
+              isMine={isMine}
+            />
+          </div>
+        )}
         {!message.deletedAt && message.document && (
           <DocumentLink
             messageId={message._id}
@@ -567,7 +577,7 @@ export default function MessageBubble({
                 <X size={18} />
               </button>
             </div>
-            <p className="mb-3 truncate text-sm text-base-content/60">{message.text || message.documentName || (message.image ? t('Photo') : message.video ? t('Video') : t('Attachment'))}</p>
+            <p className="mb-3 truncate text-sm text-base-content/60">{message.text || message.documentName || (message.image ? t('Photo') : message.video ? t('Video') : message.audio ? `🎤 ${t('Voice message')}` : t('Attachment'))}</p>
             <div className="max-h-[50vh] overflow-y-auto">
               {users.length ? users.map((user) => (
                 <button
@@ -601,7 +611,7 @@ export default function MessageBubble({
                 <X size={18} />
               </button>
             </div>
-            <p className="mb-4 truncate text-sm text-base-content/60">{message.text || message.documentName || (message.image ? t('Photo') : message.video ? t('Video') : t('Attachment'))}</p>
+            <p className="mb-4 truncate text-sm text-base-content/60">{message.text || message.documentName || (message.image ? t('Photo') : message.video ? t('Video') : message.audio ? `🎤 ${t('Voice message')}` : t('Attachment'))}</p>
             <div className="flex flex-col gap-2">
               {[{ days: 1, label: '24 hours' }, { days: 7, label: '7 days' }, { days: 30, label: '30 days' }].map(({ days, label }) => (
                 <button key={days} type="button" disabled={isBusy} onClick={() => setPinDuration(days)} className="btn btn-outline">

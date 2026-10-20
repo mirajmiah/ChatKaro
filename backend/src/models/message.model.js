@@ -23,6 +23,12 @@ const messageSchema = new mongoose.Schema(
     video: {
       type: String,
     },
+    audio: {
+      type: String,
+    },
+    audioDuration: {
+      type: Number,
+    },
     document: {
       type: String,
     },
