@@ -272,6 +272,9 @@ export default function Sidebar() {
             {isSearchingContact ? <span className="loading loading-spinner loading-xs" /> : <Search size={17} />}
           </button>
         </form>
+        <p className="px-1 text-xs leading-relaxed text-base-content/60">
+          {t('Enter an email, search, and send a request. Start chatting after they accept.')}
+        </p>
         {contactSearchResult && (
           <div className="flex items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3">
             {contactSearchResult.profilePic ? (
