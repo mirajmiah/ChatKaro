@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, UserRound, ContactRound, Languages, Palette, BookOpen, Code2, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
@@ -41,7 +41,6 @@ export default function Navbar() {
 
   const items = [
     { label: t('Profile'), description: t('Update your photo and personal information'), icon: UserRound, to: '/profile' },
-    { label: t('Account'), description: t('Account details and sign-out options'), icon: ContactRound, to: '/profile#account' },
     { label: t('App language'), description: t('Choose your preferred language'), icon: Languages, to: '/settings#app-language' },
     { label: t('App theme'), description: t('Customize the app appearance'), icon: Palette, to: '/settings#app-theme' },
     { label: t('How to Use'), description: t('Learn how to find contacts and chat'), icon: BookOpen, to: '/settings#how-to-use' },
@@ -92,6 +91,18 @@ export default function Navbar() {
                   ))}
                 </div>
 
+                <div className="border-t border-base-300 p-1.5">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-error transition-colors hover:bg-error/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-error"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-error/10 text-error">
+                      <LogOut size={19} />
+                    </span>
+                    <span className="min-w-0 flex-1 text-left text-sm font-semibold">{t('Logout')}</span>
+                  </button>
+                </div>
               </section>
             </>
           )}

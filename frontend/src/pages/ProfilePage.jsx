@@ -1,16 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check, LogOut } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from '../components/ImageViewer.jsx';
 import Avatar from '../components/Avatar.jsx';
 
 export default function ProfilePage() {
-  const { authUser, updateProfile, updateName, updateBio, onlineUsers, logout } = useAuthStore();
+  const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isAccountView = location.hash === '#account';
   const { language, t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
@@ -19,11 +17,6 @@ export default function ProfilePage() {
   const fileInputRef = useRef(null);
 
   const isOnline = onlineUsers.includes(authUser?._id);
-
-  useEffect(() => {
-    if (!location.hash) return;
-    document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [location.hash]);
 
   // Make the device/browser Back button return to Chats from this page.
   useEffect(() => {
@@ -90,15 +83,6 @@ export default function ProfilePage() {
       })
     : '—';
 
-  const initials = authUser?.fullName
-    ? authUser.fullName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : '?';
-
   return (
     <div className="flex-1 flex items-start justify-center px-3 py-5 sm:px-4 sm:py-12">
       <div className="w-full max-w-lg">
@@ -111,17 +95,15 @@ export default function ProfilePage() {
   </div>
 
   <div className="text-center">
-    <h1 className="text-2xl font-bold">{isAccountView ? t('Account') : t('Your Profile')}</h1>
+    <h1 className="text-2xl font-bold">{t('Your Profile')}</h1>
     <p className="text-base-content/60 mt-1">
-      {isAccountView ? t('Account details, membership, and sign out') : t('Manage your account information')}
+      {t('Manage your account information')}
     </p>
   </div>
 </div>
 
         <div className="card bg-base-200 shadow-xl border border-base-300">
           <div className="card-body items-center gap-6">
-            {!isAccountView && (
-              <>
             {/* Avatar section */}
             <div className="relative">
               <div className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-primary/30 bg-base-300 flex items-center justify-center">
@@ -298,11 +280,7 @@ export default function ProfilePage() {
                   </p>
                 )}
               </div>
-              </div>
-              </>
-            )}
-            {isAccountView && (
-              <div className="w-full space-y-4">
+
               <div className="flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
                 <Mail size={18} className="text-primary shrink-0" />
                 <div className="min-w-0">
@@ -332,26 +310,11 @@ export default function ProfilePage() {
                   <p className="font-semibold text-success">{t('Active')}</p>
                 </div>
               </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  await logout();
-                  navigate('/login', { replace: true });
-                }}
-                className="btn btn-error mt-2 w-full gap-2"
-              >
-                <LogOut size={18} />
-                {t('Logout')}
-              </button>
-              </div>
-            )}
-
-            {!isAccountView && (
-              <p className="text-xs text-base-content/40 text-center">
-                {t('Click the camera icon to upload a new profile photo (max 10MB)')}
-              </p>
-            )}
+            <p className="text-xs text-base-content/40 text-center">
+              {t('Click the camera icon to upload a new profile photo (max 10MB)')}
+            </p>
           </div>
         </div>
       </div>
