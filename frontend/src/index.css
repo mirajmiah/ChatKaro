@@ -149,7 +149,6 @@
   }
 
   /* Suppress native textarea scrollbars on mobile and desktop */
-  textarea.chat-input-textarea,
   .chat-input-textarea::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
