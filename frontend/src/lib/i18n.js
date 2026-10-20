@@ -342,6 +342,8 @@ const TRANSLATIONS = {
     'Messages can only be deleted for 4 hours.': 'শুধু ৪ ঘণ্টার মধ্যে বার্তা মুছতে পারবেন।',
     'for everyone': 'সবার জন্য',
     'for you': 'আপনার জন্য',
+    'typing': 'টাইপ করছেন…',
+    'is typing': 'টাইপ করছেন…',
   },
   hi: {
     'Chats': 'चैट',
@@ -682,6 +684,8 @@ const TRANSLATIONS = {
     'Only the sender can delete for everyone.': 'केवल भेजने वाला ही सभी के लिए संदेश हटा सकता है।',
     'Message is already deleted.': 'संदेश पहले ही हटाया जा चुका है।',
     'Messages can only be deleted for 4 hours.': 'संदेश केवल 4 घंटे तक हटाए जा सकते हैं।',
+    'typing': 'टाइप कर रहे हैं…',
+    'is typing': 'टाइप कर रहे हैं…',
   },
 };
 

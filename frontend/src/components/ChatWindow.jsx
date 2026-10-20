@@ -22,7 +22,7 @@ function BubbleSkeleton({ align = 'start' }) {
 }
 
 export default function ChatWindow() {
-  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, toggleReaction, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
+  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, toggleReaction } = useChatStore();
   const { authUser } = useAuthStore();
   const { t } = useTranslation();
   const bottomRef = useRef(null);
@@ -32,13 +32,11 @@ export default function ChatWindow() {
   const [pinClock, setPinClock] = useState(Date.now());
   const previousMessageCount = useRef(0);
 
-  const isOtherUserTyping = Boolean(selectedUser && typingUsers[selectedUser._id]);
+  const isOtherUserTyping = Boolean(selectedUser && typingUsers[String(selectedUser._id)]);
 
   useEffect(() => {
     if (!selectedUser) return;
     fetchMessages(selectedUser._id);
-    subscribeToMessages();
-    return () => unsubscribeFromMessages();
   }, [selectedUser?._id]);
 
   // Auto-scroll to bottom when messages change

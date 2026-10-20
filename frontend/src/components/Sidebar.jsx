@@ -36,6 +36,7 @@ export default function Sidebar() {
   const { language, t } = useTranslation();
   const {
     users,
+    typingUsers,
     contactRequests,
     messageRequests,
     selectedUser,
@@ -386,6 +387,7 @@ export default function Sidebar() {
               {t('Message requests')} <span className="badge badge-warning badge-xs">{messageRequests.length}</span>
             </h3>
             {messageRequests.map((request) => {
+              const isTyping = Boolean(typingUsers?.[String(request.sender._id)]);
               const message = request.latestMessage;
               const preview = message.text
                 || message.documentName
@@ -404,7 +406,18 @@ export default function Sidebar() {
                     aria-label={t('View {count} message(s) from {name}', { count: request.messageCount, name: request.sender.fullName })}
                   >
                     <p className="truncate text-sm font-semibold">{request.sender.fullName}</p>
-                    <p className="truncate text-xs text-base-content/60">{preview}</p>
+                    {isTyping ? (
+                      <p className="flex items-center gap-1.5 truncate text-xs font-medium text-primary animate-pulse">
+                        <span>{t('typing')}</span>
+                        <span className="inline-flex items-center gap-0.5">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" />
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="truncate text-xs text-base-content/60">{preview}</p>
+                    )}
                     <p className="text-xs text-warning">
                       {t('{count} message(s) · View before accepting', { count: request.messageCount })}
                     </p>
@@ -450,6 +463,7 @@ export default function Sidebar() {
           visibleUsers.map((user) => {
             const isOnline = onlineUsers.includes(user._id);
             const isSelected = selectedUser?._id === user._id;
+            const isUserTyping = Boolean(typingUsers?.[String(user._id)]);
             const latestMessage = user.latestMessage;
             const messagePreview = latestMessage && (
               latestMessage.text
@@ -508,9 +522,20 @@ export default function Sidebar() {
                     ) : null}
                   </div>
                   <div className="mt-0.5 flex min-w-0 items-center justify-between gap-2">
-                    <p className={`truncate text-xs ${latestMessage ? 'text-base-content/60' : isOnline ? 'text-success' : 'text-base-content/40'}`}>
-                      {latestMessage ? `${messagePrefix}${messagePreview}` : t(isOnline ? 'Online' : 'Offline')}
-                    </p>
+                    {isUserTyping ? (
+                      <p className="flex items-center gap-1.5 truncate text-xs font-medium text-primary animate-pulse">
+                        <span>{t('typing')}</span>
+                        <span className="inline-flex items-center gap-0.5">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" />
+                        </span>
+                      </p>
+                    ) : (
+                      <p className={`truncate text-xs ${latestMessage ? 'text-base-content/60' : isOnline ? 'text-success' : 'text-base-content/40'}`}>
+                        {latestMessage ? `${messagePrefix}${messagePreview}` : t(isOnline ? 'Online' : 'Offline')}
+                      </p>
+                    )}
                     {user.unreadCount > 0 && (
                       <span className="badge badge-primary badge-sm min-w-5 shrink-0">
                         {user.unreadCount > 99 ? '99+' : user.unreadCount}

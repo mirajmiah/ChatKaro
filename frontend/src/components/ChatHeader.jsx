@@ -25,7 +25,7 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
   if (!selectedUser) return null;
 
   const isOnline = onlineUsers.includes(selectedUser._id);
-  const isTyping = Boolean(typingUsers[selectedUser._id]);
+  const isTyping = Boolean(typingUsers[String(selectedUser._id)]);
 
   return (
     <div className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-200/85 backdrop-blur-md px-4 py-3">

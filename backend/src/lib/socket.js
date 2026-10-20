@@ -51,32 +51,33 @@ export const initSocket = (httpServer) => {
       return;
     }
 
-    socket.join(userId);
-    const sockets = onlineUsers.get(userId) || new Set();
+    const uid = userId.toString();
+    socket.join(uid);
+    const sockets = onlineUsers.get(uid) || new Set();
     const wasOffline = sockets.size === 0;
     sockets.add(socket.id);
-    onlineUsers.set(userId, sockets);
+    onlineUsers.set(uid, sockets);
     socket.emit('onlineUsers', Array.from(onlineUsers.keys()));
     if (wasOffline) io.emit('onlineUsers', Array.from(onlineUsers.keys()));
 
     socket.on('typing:start', ({ receiverId }) => {
       if (receiverId) {
-        emitToUser(receiverId, 'typing:start', { senderId: userId });
+        emitToUser(receiverId.toString(), 'typing:start', { senderId: uid });
       }
     });
 
     socket.on('typing:stop', ({ receiverId }) => {
       if (receiverId) {
-        emitToUser(receiverId, 'typing:stop', { senderId: userId });
+        emitToUser(receiverId.toString(), 'typing:stop', { senderId: uid });
       }
     });
 
     socket.on('disconnect', () => {
-      const activeSockets = onlineUsers.get(userId);
+      const activeSockets = onlineUsers.get(uid);
       if (!activeSockets) return;
       activeSockets.delete(socket.id);
       if (activeSockets.size === 0) {
-        onlineUsers.delete(userId);
+        onlineUsers.delete(uid);
         io.emit('onlineUsers', Array.from(onlineUsers.keys()));
       }
     });

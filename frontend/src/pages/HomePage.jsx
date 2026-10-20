@@ -1,9 +1,18 @@
+import { useEffect } from 'react';
 import { useChatStore } from '../store/useChatStore.js';
+import { useAuthStore } from '../store/useAuthStore.js';
 import Sidebar from '../components/Sidebar.jsx';
 import ChatWindow from '../components/ChatWindow.jsx';
 
 export default function HomePage() {
-  const { selectedUser } = useChatStore();
+  const { selectedUser, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
+  const socket = useAuthStore((state) => state.socket);
+
+  useEffect(() => {
+    if (!socket) return;
+    subscribeToMessages();
+    return () => unsubscribeFromMessages();
+  }, [socket, subscribeToMessages, unsubscribeFromMessages]);
 
   return (
     <div className="app-chat-layout flex min-h-0 flex-1 overflow-hidden">

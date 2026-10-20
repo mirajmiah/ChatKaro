@@ -103,18 +103,24 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   }, []);
 
   const handleTextareaChange = (e) => {
-    setText(e.target.value);
+    const val = e.target.value;
+    setText(val);
     // Auto-resize
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
 
     if (selectedUser?._id) {
-      sendTypingStart(selectedUser._id);
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
+      if (!val.trim()) {
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         sendTypingStop(selectedUser._id);
-      }, 1500);
+      } else {
+        sendTypingStart(selectedUser._id);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          sendTypingStop(selectedUser._id);
+        }, 1500);
+      }
     }
   };
 

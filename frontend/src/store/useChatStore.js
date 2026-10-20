@@ -197,9 +197,14 @@ fetchUsers: async () => {
     const { selectedUser, users } = get();
     const isConversationOpen = String(selectedUser?._id) === contactId;
 
+    if (get()._typingTimeouts?.[contactId]) {
+      clearTimeout(get()._typingTimeouts[contactId]);
+    }
+
     set((state) => {
       const exists = state.messages.some((item) => item._id === message._id);
       return {
+        typingUsers: { ...state.typingUsers, [contactId]: false },
         messages: isConversationOpen && !exists
           ? [...state.messages, message]
           : state.messages,
@@ -409,15 +414,30 @@ fetchUsers: async () => {
 
     const onTypingStart = ({ senderId }) => {
       if (!senderId) return;
+      const id = String(senderId);
+      if (get()._typingTimeouts?.[id]) {
+        clearTimeout(get()._typingTimeouts[id]);
+      }
+      const timeout = setTimeout(() => {
+        set((state) => ({
+          typingUsers: { ...state.typingUsers, [id]: false },
+        }));
+      }, 3500);
+
       set((state) => ({
-        typingUsers: { ...state.typingUsers, [senderId]: true },
+        typingUsers: { ...state.typingUsers, [id]: true },
+        _typingTimeouts: { ...(state._typingTimeouts || {}), [id]: timeout },
       }));
     };
 
     const onTypingStop = ({ senderId }) => {
       if (!senderId) return;
+      const id = String(senderId);
+      if (get()._typingTimeouts?.[id]) {
+        clearTimeout(get()._typingTimeouts[id]);
+      }
       set((state) => ({
-        typingUsers: { ...state.typingUsers, [senderId]: false },
+        typingUsers: { ...state.typingUsers, [id]: false },
       }));
     };
 
@@ -444,12 +464,12 @@ fetchUsers: async () => {
 
   sendTypingStart: (receiverId) => {
     const socket = useAuthStore.getState().socket;
-    if (socket && receiverId) socket.emit('typing:start', { receiverId });
+    if (socket && receiverId) socket.emit('typing:start', { receiverId: String(receiverId) });
   },
 
   sendTypingStop: (receiverId) => {
     const socket = useAuthStore.getState().socket;
-    if (socket && receiverId) socket.emit('typing:stop', { receiverId });
+    if (socket && receiverId) socket.emit('typing:stop', { receiverId: String(receiverId) });
   },
 
   unsubscribeFromMessages: () => {
