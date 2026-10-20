@@ -108,7 +108,9 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     // Auto-resize
     const el = e.target;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    const newHeight = Math.min(el.scrollHeight, 120);
+    el.style.height = `${newHeight}px`;
+    el.style.overflowY = el.scrollHeight > 120 ? 'auto' : 'hidden';
 
     if (selectedUser?._id) {
       if (!val.trim()) {
@@ -146,7 +148,9 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       const newCursorPos = start + emoji.length;
       el.setSelectionRange(newCursorPos, newCursorPos);
       el.style.height = 'auto';
-      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+      const newHeight = Math.min(el.scrollHeight, 120);
+      el.style.height = `${newHeight}px`;
+      el.style.overflowY = el.scrollHeight > 120 ? 'auto' : 'hidden';
     }, 0);
   };
 
@@ -179,6 +183,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.overflowY = 'hidden';
       }
     } catch {
       // Error toast handled by store
@@ -475,7 +480,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
               onPaste={handlePaste}
               placeholder={t('Type a message…')}
               rows={1}
-              className="textarea textarea-bordered w-full resize-none overflow-y-auto bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-2"
+              className="chat-input-textarea textarea textarea-bordered w-full resize-none overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-3"
               style={{ minHeight: '2.5rem', maxHeight: '7.5rem' }}
               disabled={isSending}
             />

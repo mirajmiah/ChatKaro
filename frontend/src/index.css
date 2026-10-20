@@ -147,4 +147,17 @@
   html[data-theme='luxury'] .brand-logo {
     filter: saturate(0) brightness(1.25);
   }
+
+  /* Suppress native textarea scrollbars on mobile and desktop */
+  textarea.chat-input-textarea,
+  .chat-input-textarea::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .chat-input-textarea {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
 }
+

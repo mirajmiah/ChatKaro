@@ -21,6 +21,7 @@ import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
 import DocumentLink from './DocumentLink.jsx';
 import AudioPlayer from './AudioPlayer.jsx';
+import Avatar from './Avatar.jsx';
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+|(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#][^\s<]*)?/gi;
 
@@ -56,18 +57,7 @@ function renderLinkedText(text) {
   return parts;
 }
 
-function InitialsAvatar({ name, size = 'w-8 h-8' }) {
-  const initials = name
-    ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
-  return (
-    <div
-      className={`${size} rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs select-none shrink-0`}
-    >
-      {initials}
-    </div>
-  );
-}
+
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -264,20 +254,20 @@ export default function MessageBubble({
       <div className="chat-image avatar">
         {isSameSenderAsNext ? (
           <div className="h-8 w-8" />
-        ) : avatar ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setShowAvatarImage(true);
-            }}
-            className="h-8 w-8 cursor-zoom-in overflow-hidden rounded-full p-0"
-            aria-label={t('View profile picture')}
-          >
-            <img src={avatar} alt={name} className="h-full w-full object-cover" />
-          </button>
         ) : (
-          <InitialsAvatar name={name} />
+          <Avatar
+            src={avatar}
+            name={name}
+            size="h-8 w-8"
+            textSize="text-xs"
+            onClick={(event) => {
+              if (avatar) {
+                event.stopPropagation();
+                setShowAvatarImage(true);
+              }
+            }}
+            className={avatar ? 'cursor-zoom-in' : ''}
+          />
         )}
       </div>
       {showAvatarImage && avatar && (
@@ -557,11 +547,7 @@ export default function MessageBubble({
                   onClick={() => forwardTo(user._id)}
                   className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-base-300 disabled:opacity-50"
                 >
-                  {user.profilePic ? (
-                    <img src={user.profilePic} alt="" className="h-9 w-9 rounded-full object-cover" />
-                  ) : (
-                    <InitialsAvatar name={user.fullName} />
-                  )}
+                  <Avatar src={user.profilePic} name={user.fullName} size="h-9 w-9" />
                   <span className="truncate">{user.fullName}</span>
                 </button>
               )) : <p className="py-6 text-center text-sm text-base-content/50">{t('No contacts available')}</p>}

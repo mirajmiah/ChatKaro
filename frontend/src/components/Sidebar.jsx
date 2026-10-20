@@ -6,31 +6,7 @@ import { useAuthStore } from '../store/useAuthStore.js';
 import { formatLastSeen } from '../lib/utils.js';
 import { useTranslation } from '../lib/i18n.js';
 import DocumentLink from './DocumentLink.jsx';
-
-function UserSkeleton() {
-  return (
-    <div className="flex items-center gap-3 px-3 py-3 animate-pulse">
-      <div className="w-11 h-11 rounded-full bg-base-300 shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3 bg-base-300 rounded w-3/4" />
-        <div className="h-2 bg-base-300 rounded w-1/2" />
-      </div>
-    </div>
-  );
-}
-
-function InitialsAvatar({ name, size = 'w-11 h-11' }) {
-  const initials = name
-    ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
-  return (
-    <div
-      className={`${size} rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center shrink-0 text-sm select-none`}
-    >
-      {initials}
-    </div>
-  );
-}
+import Avatar, { InitialsAvatar } from './Avatar.jsx';
 
 export default function Sidebar() {
   const { language, t } = useTranslation();
@@ -278,11 +254,7 @@ export default function Sidebar() {
         </p>
         {contactSearchResult && (
           <div className="flex items-center gap-3 rounded-lg border border-base-300 bg-base-100 p-3">
-            {contactSearchResult.profilePic ? (
-              <img src={contactSearchResult.profilePic} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-            ) : (
-              <InitialsAvatar name={contactSearchResult.fullName} size="h-10 w-10" />
-            )}
+            <Avatar src={contactSearchResult.profilePic} name={contactSearchResult.fullName} size="h-10 w-10" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{contactSearchResult.fullName}</p>
               <p className="truncate text-xs text-base-content/60">{contactSearchResult.email}</p>
@@ -348,35 +320,33 @@ export default function Sidebar() {
               {t('Contact requests')} <span className="badge badge-primary badge-xs">{contactRequests.length}</span>
             </h3>
             {contactRequests.map((request) => (
-              request.sender && <div key={request._id} className="flex min-h-16 items-center gap-2 px-3 py-2">
-                {request.sender.profilePic ? (
-                  <img src={request.sender.profilePic} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <InitialsAvatar name={request.sender.fullName} size="h-10 w-10" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{request.sender.fullName}</p>
-                  <p className="truncate text-xs text-base-content/50">{request.sender.email}</p>
+              request.sender ? (
+                <div key={request._id} className="flex min-h-16 items-center gap-2 px-3 py-2">
+                  <Avatar src={request.sender.profilePic} name={request.sender.fullName} size="h-10 w-10" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{request.sender.fullName}</p>
+                    <p className="truncate text-xs text-base-content/50">{request.sender.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRespondToRequest(request, true)}
+                    className="btn btn-success btn-sm btn-square min-h-10 min-w-10"
+                    aria-label={t('Accept request from {name}', { name: request.sender.fullName })}
+                    title={t('Accept')}
+                  >
+                    <Check size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRespondToRequest(request, false)}
+                    className="btn btn-ghost btn-sm btn-square min-h-10 min-w-10 text-error"
+                    aria-label={t('Decline request from {name}', { name: request.sender.fullName })}
+                    title={t('Decline')}
+                  >
+                    <X size={15} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRespondToRequest(request, true)}
-                  className="btn btn-success btn-sm btn-square min-h-10 min-w-10"
-                  aria-label={t('Accept request from {name}', { name: request.sender.fullName })}
-                  title={t('Accept')}
-                >
-                  <Check size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRespondToRequest(request, false)}
-                  className="btn btn-ghost btn-sm btn-square min-h-10 min-w-10 text-error"
-                  aria-label={t('Decline request from {name}', { name: request.sender.fullName })}
-                  title={t('Decline')}
-                >
-                  <X size={15} />
-                </button>
-              </div>
+              ) : null
             ))}
           </section>
         )}
@@ -394,11 +364,7 @@ export default function Sidebar() {
                 || (message.image ? t('Photo') : message.video ? t('Video') : message.audio ? `🎤 ${t('Voice message')}` : t('Attachment'));
               return (
                 <div key={request.sender._id} className="flex items-center gap-2 px-3 py-2">
-                  {request.sender.profilePic ? (
-                    <img src={request.sender.profilePic} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-                  ) : (
-                    <InitialsAvatar name={request.sender.fullName} size="h-10 w-10" />
-                  )}
+                  <Avatar src={request.sender.profilePic} name={request.sender.fullName} size="h-10 w-10" />
                   <button
                     type="button"
                     onClick={() => handleViewMessageRequest(request)}
@@ -494,15 +460,11 @@ export default function Sidebar() {
                 <button type="button" onClick={() => handleSelectUser(user)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 {/* Avatar */}
                 <div className="relative shrink-0">
-                  {user.profilePic ? (
-                    <img
-                      src={user.profilePic}
-                      alt={user.fullName}
-                      className="w-11 h-11 rounded-full object-cover"
-                    />
-                  ) : (
-                    <InitialsAvatar name={user.fullName} />
-                  )}
+                  <Avatar
+                    src={user.profilePic}
+                    name={user.fullName}
+                    size="w-11 h-11"
+                  />
                   {/* Online dot */}
                   {isOnline && (
                     <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-success border-2 border-base-200" />
@@ -595,11 +557,7 @@ export default function Sidebar() {
             onClick={(event) => event.stopPropagation()}
           >
             <header className="flex items-center gap-3 border-b border-base-300 p-4">
-              {viewingMessageRequest.sender.profilePic ? (
-                <img src={viewingMessageRequest.sender.profilePic} alt="" className="h-10 w-10 rounded-full object-cover" />
-              ) : (
-                <InitialsAvatar name={viewingMessageRequest.sender.fullName} size="h-10 w-10" />
-              )}
+              <Avatar src={viewingMessageRequest.sender.profilePic} name={viewingMessageRequest.sender.fullName} size="h-10 w-10" />
               <div className="min-w-0 flex-1">
                 <h2 className="truncate font-semibold">{viewingMessageRequest.sender.fullName}</h2>
                 <p className="text-xs text-base-content/60">{t('Message request · review before accepting')}</p>

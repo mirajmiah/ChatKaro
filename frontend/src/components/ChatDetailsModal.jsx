@@ -4,6 +4,7 @@ import { Image, Link2, Star, Video, X } from 'lucide-react';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
 import DocumentLink from './DocumentLink.jsx';
+import Avatar from './Avatar.jsx';
 
 const TABS = [
   { id: 'media', label: 'Media' },
@@ -68,18 +69,16 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
           <button type="button" onClick={onClose} className="btn btn-ghost btn-sm btn-circle absolute right-3 top-3" aria-label={t('Close details')}>
             <X size={18} />
           </button>
-          {user.profilePic ? (
-            <button
-              type="button"
-              onClick={() => setShowProfileImage(true)}
-              className="h-24 w-24 cursor-zoom-in overflow-hidden rounded-full"
-              aria-label={t('View profile picture')}
-            >
-              <img src={user.profilePic} alt={user.fullName} className="h-full w-full object-cover" />
-            </button>
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 text-2xl font-bold text-primary">{initials}</div>
-          )}
+          <Avatar
+            src={user.profilePic}
+            name={user.fullName}
+            size="h-24 w-24"
+            textSize="text-2xl"
+            onClick={() => {
+              if (user.profilePic) setShowProfileImage(true);
+            }}
+            className={user.profilePic ? 'cursor-zoom-in' : ''}
+          />
           <h2 className="mt-3 text-xl font-bold">{user.fullName}</h2>
           <p className={`text-sm ${isOnline ? 'text-success' : 'text-base-content/50'}`}>{t(isOnline ? 'Online' : 'Offline')}</p>
           {user.email && <p className="mt-1 text-sm text-base-content/60">{user.email}</p>}

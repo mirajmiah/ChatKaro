@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from '../components/ImageViewer.jsx';
+import Avatar from '../components/Avatar.jsx';
 
 export default function ProfilePage() {
   const { authUser, updateProfile, updateName, updateBio, onlineUsers, logout } = useAuthStore();
@@ -124,22 +125,16 @@ export default function ProfilePage() {
             {/* Avatar section */}
             <div className="relative">
               <div className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-primary/30 bg-base-300 flex items-center justify-center">
-                {authUser?.profilePic ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowProfileImage(true)}
-                    className="h-full w-full cursor-zoom-in"
-                    aria-label={t('View profile picture')}
-                  >
-                    <img
-                      src={authUser.profilePic}
-                      alt={authUser.fullName}
-                      className="h-full w-full object-cover"
-                    />
-                  </button>
-                ) : (
-                  <span className="text-3xl font-bold text-base-content/50">{initials}</span>
-                )}
+                <Avatar
+                  src={authUser?.profilePic}
+                  name={authUser?.fullName}
+                  size="w-28 h-28"
+                  textSize="text-3xl"
+                  onClick={() => {
+                    if (authUser?.profilePic) setShowProfileImage(true);
+                  }}
+                  className={authUser?.profilePic ? 'cursor-zoom-in' : ''}
+                />
               </div>
 
               {/* Online badge */}

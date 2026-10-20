@@ -3,18 +3,8 @@ import { ArrowLeft, Info, Phone, Video } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import ChatDetailsModal from './ChatDetailsModal.jsx';
+import Avatar from './Avatar.jsx';
 import { useTranslation } from '../lib/i18n.js';
-
-function InitialsAvatar({ name }) {
-  const initials = name
-    ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
-  return (
-    <div className="w-10 h-10 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-sm select-none shrink-0">
-      {initials}
-    </div>
-  );
-}
 
 export default function ChatHeader({ messages, onJumpToMessage }) {
   const { selectedUser, selectUser, typingUsers } = useChatStore();
@@ -40,11 +30,11 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
 
       <button type="button" onClick={() => setShowDetails(true)} className="flex flex-1 min-w-0 items-center gap-3 text-left hover:opacity-80">
         <div className="relative shrink-0">
-          {selectedUser.profilePic ? (
-            <img src={selectedUser.profilePic} alt={selectedUser.fullName} className="w-10 h-10 rounded-full object-cover" />
-          ) : (
-            <InitialsAvatar name={selectedUser.fullName} />
-          )}
+          <Avatar
+            src={selectedUser.profilePic}
+            name={selectedUser.fullName}
+            size="w-10 h-10"
+          />
           {isOnline && (
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-success border-2 border-base-200" />
           )}
