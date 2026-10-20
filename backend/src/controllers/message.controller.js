@@ -269,7 +269,7 @@ export const addContact = async (req, res) => {
       await ContactRequest.deleteOne({ _id: existingRequest._id });
     }
 
-    await ContactRequest.create({ sender: req.user._id, recipient: contact._id });
+    const newRequest = await ContactRequest.create({ sender: req.user._id, recipient: contact._id });
     emitToUser(contact._id.toString(), 'contactsUpdated');
     emitToUser(contact._id.toString(), 'notification', {
       type: 'contactRequest',
@@ -278,6 +278,7 @@ export const addContact = async (req, res) => {
 
     return res.status(201).json({
       message: `Contact request sent to ${contact.fullName}.`,
+      requestId: newRequest._id,
       contact: { ...contact.toObject(), requestStatus: 'sent' },
     });
   } catch (error) {
