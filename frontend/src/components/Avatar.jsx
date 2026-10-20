@@ -65,15 +65,20 @@ export default function Avatar({
   }
 
   return (
-    <img
-      src={src}
-      alt={alt || name || 'Avatar'}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setHasError(true)}
+    <div
       onClick={onClick}
-      className={`${size} rounded-full object-cover shrink-0 ${className}`}
-    />
+      className={`${size} rounded-full overflow-hidden shrink-0 inline-flex items-center justify-center ${className}`}
+      style={{ aspectRatio: '1 / 1' }}
+    >
+      <img
+        src={src}
+        alt={alt || name || 'Avatar'}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setHasError(true)}
+        className="h-full w-full object-cover block"
+      />
+    </div>
   );
 }

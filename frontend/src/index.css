@@ -159,5 +159,27 @@
     -ms-overflow-style: none !important;
     scrollbar-width: none !important;
   }
+
+  /* Prevent chat message avatars from overflowing or expanding grid cells */
+  .chat .chat-image {
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    max-width: 2rem !important;
+    min-height: 2rem !important;
+    max-height: 2rem !important;
+    overflow: hidden !important;
+    border-radius: 9999px !important;
+    align-self: flex-end;
+  }
+  .chat .chat-image img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 9999px !important;
+    display: block !important;
+  }
 }
 
