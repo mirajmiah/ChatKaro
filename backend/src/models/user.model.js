@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema(
   {
@@ -24,6 +24,14 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
     signupOtpExpires: {
+      type: Date,
+      select: false,
+    },
+    loginOtpHash: {
+      type: String,
+      select: false,
+    },
+    loginOtpExpires: {
       type: Date,
       select: false,
     },

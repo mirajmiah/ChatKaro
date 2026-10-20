@@ -207,7 +207,9 @@ FRONTEND_URL=https://your-domain.com
 | POST   | /api/auth/signup           | No            | Start registration and send email verification code |
 | POST   | /api/auth/signup/verify-otp | No           | Verify signup code, finalize account details, and create login session |
 | POST   | /api/auth/signup/resend-otp | No           | Send a replacement signup code |
-| POST   | /api/auth/login            | No            | Login, get JWT cookie  |
+| POST   | /api/auth/login            | No            | Validate credentials and send sign-in OTP email |
+| POST   | /api/auth/login/verify-otp | No            | Verify sign-in code and issue login session |
+| POST   | /api/auth/login/resend-otp | No            | Send replacement sign-in OTP code |
 | POST   | /api/auth/logout           | Yes           | Clear JWT cookie       |
 | GET    | /api/auth/check            | Yes           | Verify auth, get user  |
 | POST   | /api/auth/forgot-password  | No            | Request a password reset |

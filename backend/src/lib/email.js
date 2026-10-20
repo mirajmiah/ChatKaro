@@ -6,6 +6,10 @@ const buildMessage = (otp, purpose) => {
       subject: 'Verify your ChatKaro email',
       intro: 'Use this code to verify your ChatKaro account:',
     },
+    login: {
+      subject: 'ChatKaro sign-in verification code',
+      intro: 'Use this code to sign in to your ChatKaro account:',
+    },
     passwordReset: {
       subject: 'Reset your ChatKaro password',
       intro: 'Use this code to reset your ChatKaro password:',

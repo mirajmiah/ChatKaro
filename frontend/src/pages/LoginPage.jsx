@@ -19,12 +19,16 @@ function SupportIllustration() {
 }
 
 export default function LoginPage() {
-  const { login, googleLogin } = useAuthStore();
+  const { login, verifyLoginOtp, resendLoginOtp, googleLogin } = useAuthStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const handleChange = (event) => {
     setFormData((previous) => ({ ...previous, [event.target.name]: event.target.value }));
@@ -34,12 +38,40 @@ export default function LoginPage() {
     event.preventDefault();
     setIsLoading(true);
     try {
-      await login(formData);
+      const res = await login(formData);
+      if (res?.otpRequired) {
+        setVerificationStep(true);
+        return;
+      }
       navigate('/');
     } catch {
       // Errors are reported by the auth store.
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+    setIsVerifying(true);
+    try {
+      await verifyLoginOtp(formData.email, otp);
+      navigate('/');
+    } catch {
+      // Errors are reported by the auth store.
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setIsResending(true);
+    try {
+      await resendLoginOtp(formData.email);
+    } catch {
+      // Errors are reported by the auth store.
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -60,7 +92,66 @@ export default function LoginPage() {
           <span className="text-lg font-bold tracking-tight">ChatKaro</span>
         </Link>
 
-        <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
+        {verificationStep ? (
+          <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
+            <div className="mb-7">
+              <h1 className="text-3xl font-bold tracking-tight text-[#111] sm:text-4xl">{t('Verify your email')}</h1>
+              <p className="mt-2 text-sm text-gray-500">
+                {t('Enter the six-digit code sent to {email}', { email: formData.email })}
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
+              <div>
+                <label htmlFor="login-otp" className="mb-2 block text-sm font-medium text-gray-800">
+                  {t('Verification code')}
+                </label>
+                <input
+                  id="login-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  placeholder="000000"
+                  className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-center text-xl tracking-[0.5em] text-gray-900 outline-none transition focus:border-[#604399] focus:ring-2 focus:ring-[#604399]/20"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isVerifying || otp.length !== 6}
+                className="flex h-11 w-full items-center justify-center rounded-md bg-[#604399] px-4 text-sm font-semibold text-white transition hover:bg-[#503781] focus:outline-none focus:ring-2 focus:ring-[#604399] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isVerifying ? <span className="loading loading-spinner loading-sm" /> : t('Sign in')}
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={isResending}
+              className="mt-5 text-sm font-medium text-[#604399] underline underline-offset-2 disabled:opacity-60"
+            >
+              {isResending ? t('Sending…') : t('Resend verification code')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setVerificationStep(false);
+                setOtp('');
+              }}
+              className="mt-4 text-sm text-gray-500 hover:text-gray-800"
+            >
+              {t('Back to login')}
+            </button>
+          </div>
+        ) : (
+          <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
           <div className="mb-7">
             <h1 className="text-3xl font-bold tracking-tight text-[#111] sm:text-4xl">{t('Welcome back')}</h1>
             <p className="mt-2 text-sm text-gray-500">{t('Please enter your details')}</p>
@@ -131,6 +222,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+        )}
       </section>
 
       <SupportIllustration />

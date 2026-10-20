@@ -186,8 +186,59 @@ export const login = async (req, res) => {
       return res.status(403).json({ message: 'Please verify your email before signing in.' });
     }
 
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    user.loginOtpHash = hashOtp(otp);
+    user.loginOtpExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    try {
+      await sendOtpEmail(user.email, otp, 'login');
+    } catch (error) {
+      console.error('login verification email error:', error.message);
+      user.loginOtpHash = undefined;
+      user.loginOtpExpires = undefined;
+      await user.save();
+      return res.status(503).json({
+        message: 'We could not send your sign-in verification code. The email service is currently unavailable; please try again later.',
+        detail: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      message: 'A verification code was sent to your email.',
+      otpRequired: true,
+      email: user.email,
+    });
+  } catch (error) {
+    console.error('login error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const verifyLoginOtp = async (req, res) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+    const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
+
+    if (!email || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: 'Enter a valid six-digit verification code.' });
+    }
+
+    const hashedOtp = hashOtp(otp);
+    const user = await User.findOne({
+      email,
+      loginOtpHash: hashedOtp,
+      loginOtpExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    }
+
+    user.loginOtpHash = undefined;
+    user.loginOtpExpires = undefined;
     user.lastSeen = new Date();
-    user.save().catch((err) => console.error('lastSeen save error:', err.message));
+    await user.save();
 
     const token = signToken(user);
     setCookie(res, token);
@@ -202,7 +253,38 @@ export const login = async (req, res) => {
       createdAt: user.createdAt,
     });
   } catch (error) {
-    console.error('login error:', error.message);
+    console.error('verifyLoginOtp error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const resendLoginOtp = async (req, res) => {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+    const user = email ? await User.findOne({ email }) : null;
+
+    if (!user || !user.loginOtpExpires || user.loginOtpExpires < Date.now() - 10 * 60 * 1000) {
+      return res.status(400).json({ message: 'Sign-in session expired. Please enter your password again.' });
+    }
+
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    user.loginOtpHash = hashOtp(otp);
+    user.loginOtpExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    try {
+      await sendOtpEmail(user.email, otp, 'login');
+    } catch (error) {
+      console.error('resend login verification email error:', error.message);
+      return res.status(503).json({
+        message: 'We could not send your verification email. The email service is currently unavailable; please try again later.',
+        detail: error.message,
+      });
+    }
+
+    return res.status(200).json({ message: 'A new verification code was sent to your email.' });
+  } catch (error) {
+    console.error('resendLoginOtp error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };

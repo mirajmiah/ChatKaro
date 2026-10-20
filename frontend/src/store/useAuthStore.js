@@ -66,11 +66,49 @@ export const useAuthStore = create((set, get) => ({
   login: async (data) => {
     try {
       const res = await api.post('/auth/login', data);
+      if (res.data.otpRequired) {
+        toast.success(translateCurrent('Verification code sent to your email.'));
+        return res.data;
+      }
       set({ authUser: res.data });
       get().connectSocket(res.data);
       toast.success(translateCurrent('Welcome back, {name}!', { name: res.data.fullName }));
+      return res.data;
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Login failed'));
+      const msg = err.response?.data?.detail
+        ? `${err.response.data.message} (${err.response.data.detail})`
+        : err.response?.data?.message || 'Login failed';
+      toast.error(translateCurrent(msg));
+      throw err;
+    }
+  },
+
+  verifyLoginOtp: async (email, otp) => {
+    try {
+      const res = await api.post('/auth/login/verify-otp', { email, otp });
+      set({ authUser: res.data });
+      get().connectSocket(res.data);
+      toast.success(translateCurrent('Welcome back, {name}!', { name: res.data.fullName }));
+      return res.data;
+    } catch (err) {
+      const msg = err.response?.data?.detail
+        ? `${err.response.data.message} (${err.response.data.detail})`
+        : err.response?.data?.message || 'Invalid or expired verification code';
+      toast.error(translateCurrent(msg));
+      throw err;
+    }
+  },
+
+  resendLoginOtp: async (email) => {
+    try {
+      const res = await api.post('/auth/login/resend-otp', { email });
+      toast.success(translateCurrent(res.data.message));
+      return res.data;
+    } catch (err) {
+      const msg = err.response?.data?.detail
+        ? `${err.response.data.message} (${err.response.data.detail})`
+        : err.response?.data?.message || 'Unable to resend verification code';
+      toast.error(translateCurrent(msg));
       throw err;
     }
   },
