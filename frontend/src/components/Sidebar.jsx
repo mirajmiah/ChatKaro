@@ -291,8 +291,6 @@ export default function Sidebar() {
                   ? t('Sent')
                   : contactSearchResult.isHidden
                     ? <><UserPlus size={14} /> {t('Request again')}</>
-                  : contactSearchResult.requestStatus === 'sent'
-                    ? t('Sent')
                     : contactSearchResult.requestStatus === 'received'
                       ? t('Respond below')
                       : contactSearchResult.requestStatus === 'accepted'
