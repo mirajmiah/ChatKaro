@@ -41,13 +41,13 @@ export default function ChatWindow() {
     return () => unsubscribeFromMessages();
   }, [selectedUser?._id]);
 
-  // Auto-scroll to bottom when messages change or other user starts typing
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (messages.length > previousMessageCount.current || isOtherUserTyping) {
+    if (messages.length > previousMessageCount.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
     previousMessageCount.current = messages.length;
-  }, [messages, isOtherUserTyping]);
+  }, [messages]);
 
   useEffect(() => {
     setReplyTarget(null);
@@ -273,23 +273,15 @@ export default function ChatWindow() {
           })
         )}
 
-        {/* Live typing indicator bubble */}
+        {/* Live typing indicator subtle note */}
         {isOtherUserTyping && (
-          <div className="chat chat-start px-4 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2">
-            <div className="chat-image avatar">
-              {selectedUser.profilePic ? (
-                <img src={selectedUser.profilePic} alt="" className="h-8 w-8 rounded-full object-cover" />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-primary/20 text-primary font-bold flex items-center justify-center text-xs">
-                  {selectedUser.fullName?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
-            </div>
-            <div className="chat-bubble bg-base-300 text-base-content flex items-center gap-1.5 py-2.5 px-4 rounded-2xl shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-2 h-2 rounded-full bg-primary animate-bounce" />
-            </div>
+          <div className="px-4 py-1 text-xs text-primary font-medium flex items-center gap-1.5 opacity-90 animate-in fade-in duration-150">
+            <span>{selectedUser.fullName} {t('is typing')}</span>
+            <span className="inline-flex items-center gap-0.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce" />
+            </span>
           </div>
         )}
         <div ref={bottomRef} />
