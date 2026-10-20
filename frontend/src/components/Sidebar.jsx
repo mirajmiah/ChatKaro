@@ -143,14 +143,13 @@ export default function Sidebar() {
   };
 
   const handleSendContactRequest = async () => {
-    // A previously accepted contact may be hidden after removal. In that case,
-    // allow a new request even though search still reports requestStatus=accepted.
+    // A hidden accepted connection can be requested again after removal.
     if (!contactSearchResult || (contactSearchResult.requestStatus && !contactSearchResult.isHidden)) return;
     setIsAddingContact(true);
     try {
       await sendContactRequest(contactSearchResult.email);
       setContactSearchResult((result) => result
-        ? { ...result, requestStatus: 'sent' }
+        ? { ...result, requestStatus: 'sent', isHidden: false }
         : result);
     } catch {
       // The chat store displays the error toast.
@@ -276,7 +275,7 @@ export default function Sidebar() {
               {contactSearchResult.requestStatus === 'accepted' && !contactSearchResult.isHidden && (
                 <p className="mt-1 text-xs text-success">{t('Connected · chat is available')}</p>
               )}
-              {contactSearchResult.isHidden && (
+              {contactSearchResult.isHidden && contactSearchResult.requestStatus !== 'sent' && (
                 <p className="mt-1 text-xs text-warning">{t('Removed · you can send a new request to reconnect')}</p>
               )}
             </div>
@@ -288,8 +287,10 @@ export default function Sidebar() {
             >
               {isAddingContact
                 ? <span className="loading loading-spinner loading-xs" />
-                : contactSearchResult.isHidden
-                  ? <><UserPlus size={14} /> {t('Request again')}</>
+                : contactSearchResult.requestStatus === 'sent'
+                  ? t('Sent')
+                  : contactSearchResult.isHidden
+                    ? <><UserPlus size={14} /> {t('Request again')}</>
                   : contactSearchResult.requestStatus === 'sent'
                     ? t('Sent')
                     : contactSearchResult.requestStatus === 'received'
