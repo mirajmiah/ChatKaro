@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { FileText, Paperclip, Send, X } from 'lucide-react';
+import { FileText, Paperclip, Send, Smile, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
+import EmojiPicker from './EmojiPicker.jsx';
 
 const MAX_IMAGE_VIDEO_SIZE = 10 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
@@ -15,6 +16,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState(null); // { data, type }
   const [isSending, setIsSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -112,11 +114,31 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     }
   };
 
+  const handleEmojiSelect = (emoji) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setText((prev) => prev + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    const newText = text.slice(0, start) + emoji + text.slice(end);
+    setText(newText);
+    setTimeout(() => {
+      el.focus();
+      const newCursorPos = start + emoji.length;
+      el.setSelectionRange(newCursorPos, newCursorPos);
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }, 0);
+  };
+
   const handleSubmit = async () => {
     const trimmed = text.trim();
     if (!trimmed && !attachment) return;
     if (!selectedUser) return;
 
+    setShowEmojiPicker(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTypingStop(selectedUser._id);
 
@@ -152,7 +174,17 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const canSend = (text.trim().length > 0 || attachment !== null) && !isSending;
 
   return (
-    <div className="chat-composer shrink-0 border-t border-base-300 bg-base-200/85 backdrop-blur-md px-3 py-3 sm:px-4">
+    <div className="chat-composer relative shrink-0 border-t border-base-300 bg-base-200/85 backdrop-blur-md px-3 py-3 sm:px-4">
+      {/* Emoji picker popup */}
+      {showEmojiPicker && (
+        <div className="absolute bottom-full mb-2 left-3 sm:left-4 z-50">
+          <EmojiPicker
+            onSelect={handleEmojiSelect}
+            onClose={() => setShowEmojiPicker(false)}
+          />
+        </div>
+      )}
+
       {/* Attachment preview */}
       {attachment && (
         <div className="relative inline-block mb-3">
@@ -216,6 +248,18 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
           className="hidden"
           onChange={handleFileChange}
         />
+
+        {/* Emoji picker button */}
+        <button
+          type="button"
+          onClick={() => setShowEmojiPicker((prev) => !prev)}
+          className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
+            showEmojiPicker ? 'text-primary bg-primary/10' : 'text-base-content/50'
+          } hover:text-base-content`}
+          aria-label={t('Insert emoji')}
+        >
+          <Smile size={20} />
+        </button>
 
         {/* Textarea */}
         <div className="flex-1 relative">

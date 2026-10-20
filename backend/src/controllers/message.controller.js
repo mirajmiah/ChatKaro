@@ -18,9 +18,17 @@ const REPLY_PREVIEW_FIELDS = 'text image video document documentName senderId de
 class AttachmentValidationError extends Error {}
 
 const serializeMessage = (message, userId) => {
-  const serialized = message.toObject();
-  serialized.isStarred = message.starredBy.some((id) => id.toString() === userId.toString());
+  const serialized = typeof message.toObject === 'function' ? message.toObject() : { ...message };
+  serialized.isStarred = Array.isArray(message.starredBy) && message.starredBy.some((id) => id.toString() === userId.toString());
   delete serialized.starredBy;
+  if (Array.isArray(serialized.reactions)) {
+    serialized.userReactions = serialized.reactions
+      .filter((r) => r.userId && r.userId.toString() === userId.toString())
+      .map((r) => r.emoji);
+  } else {
+    serialized.reactions = [];
+    serialized.userReactions = [];
+  }
   return serialized;
 };
 
@@ -988,6 +996,69 @@ export const forwardMessage = async (req, res) => {
     return res.status(201).json(serialized);
   } catch (error) {
     console.error('forwardMessage error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const toggleMessageReaction = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+    const myId = req.user._id;
+
+    if (!mongoose.isValidObjectId(messageId)) {
+      return res.status(400).json({ message: 'Invalid message request.' });
+    }
+    if (!emoji || typeof emoji !== 'string' || emoji.trim().length > 10) {
+      return res.status(400).json({ message: 'A valid emoji is required.' });
+    }
+
+    const cleanEmoji = emoji.trim();
+
+    const message = await Message.findOne({
+      _id: messageId,
+      deletedAt: { $exists: false },
+      deletedFor: { $ne: myId },
+      $or: [{ senderId: myId }, { receiverId: myId }],
+    });
+
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found.' });
+    }
+
+    if (!Array.isArray(message.reactions)) {
+      message.reactions = [];
+    }
+
+    const existingIndex = message.reactions.findIndex(
+      (r) => r.userId.toString() === myId.toString() && r.emoji === cleanEmoji
+    );
+
+    if (existingIndex > -1) {
+      message.reactions.splice(existingIndex, 1);
+    } else {
+      const previousIndex = message.reactions.findIndex(
+        (r) => r.userId.toString() === myId.toString()
+      );
+      if (previousIndex > -1) {
+        message.reactions[previousIndex].emoji = cleanEmoji;
+        message.reactions[previousIndex].createdAt = new Date();
+      } else {
+        message.reactions.push({
+          userId: myId,
+          emoji: cleanEmoji,
+          createdAt: new Date(),
+        });
+      }
+    }
+
+    await message.save();
+    await message.populate('replyTo', REPLY_PREVIEW_FIELDS);
+
+    emitToConversation(message, 'messageReaction');
+    return res.status(200).json(serializeMessage(message, myId));
+  } catch (error) {
+    console.error('toggleMessageReaction error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };

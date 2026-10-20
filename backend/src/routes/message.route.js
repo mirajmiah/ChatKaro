@@ -19,6 +19,7 @@ import {
   deleteMessage,
   toggleStarMessage,
   togglePinMessage,
+  toggleMessageReaction,
   forwardMessage,
 } from '../controllers/message.controller.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
@@ -48,6 +49,7 @@ router.post('/send/:userId', protectRoute, sendMessage);
 router.post('/:messageId/forward', protectRoute, forwardMessage);
 router.patch('/:messageId/star', protectRoute, toggleStarMessage);
 router.patch('/:messageId/pin', protectRoute, togglePinMessage);
+router.patch('/:messageId/react', protectRoute, toggleMessageReaction);
 router.put('/:messageId', protectRoute, editMessage);
 
 export default router;

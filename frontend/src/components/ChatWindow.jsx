@@ -22,7 +22,7 @@ function BubbleSkeleton({ align = 'start' }) {
 }
 
 export default function ChatWindow() {
-  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
+  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, toggleReaction, subscribeToMessages, unsubscribeFromMessages } = useChatStore();
   const { authUser } = useAuthStore();
   const { t } = useTranslation();
   const bottomRef = useRef(null);
@@ -259,6 +259,7 @@ export default function ChatWindow() {
                 toggleStarMessage={toggleStarMessage}
                 togglePinMessage={togglePinMessage}
                 forwardMessage={forwardMessage}
+                toggleReaction={toggleReaction}
                 onReply={(message) => setReplyTarget(message)}
                 jumpToMessage={jumpToMessage}
                 selectionMode={selectedCount > 0}

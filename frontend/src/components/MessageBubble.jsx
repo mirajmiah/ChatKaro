@@ -68,6 +68,8 @@ function InitialsAvatar({ name, size = 'w-8 h-8' }) {
   );
 }
 
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
 export default function MessageBubble({
   message,
   authUser,
@@ -77,6 +79,7 @@ export default function MessageBubble({
   toggleStarMessage,
   togglePinMessage,
   forwardMessage,
+  toggleReaction,
   onReply,
   jumpToMessage,
   selectionMode = false,
@@ -103,6 +106,35 @@ export default function MessageBubble({
     Date.now() - new Date(message.createdAt).getTime() <= 15 * 60 * 1000;
   const canDelete = isMine && !message.deletedAt &&
     Date.now() - new Date(message.createdAt).getTime() <= 4 * 60 * 60 * 1000;
+
+  const reactionGroups = (message.reactions || []).reduce((acc, curr) => {
+    if (!curr.emoji) return acc;
+    if (!acc[curr.emoji]) {
+      acc[curr.emoji] = {
+        emoji: curr.emoji,
+        count: 0,
+        hasMine: false,
+      };
+    }
+    acc[curr.emoji].count += 1;
+    if (String(curr.userId) === String(authUser?._id)) {
+      acc[curr.emoji].hasMine = true;
+    }
+    return acc;
+  }, {});
+  const reactionList = Object.values(reactionGroups);
+
+  const handleToggleReaction = async (emoji) => {
+    if (isBusy || !toggleReaction) return;
+    setIsBusy(true);
+    try {
+      await toggleReaction(message._id, emoji);
+    } catch {
+      // toast handled in store
+    } finally {
+      setIsBusy(false);
+    }
+  };
 
   const otherUser = users.find((user) => String(user._id) === String(isMine ? message.receiverId : message.senderId));
   const avatar = isMine ? authUser?.profilePic : otherUser?.profilePic;
@@ -210,7 +242,7 @@ export default function MessageBubble({
     <div
       id={`message-${message._id}`}
       onClick={selectionMode ? onToggleSelection : undefined}
-      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 transition-all duration-150 ${
+      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 group relative transition-all duration-150 ${
         isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'
       } ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg bg-primary/10' : ''}`}
     >
@@ -256,6 +288,36 @@ export default function MessageBubble({
         />
       )}
 
+      {/* Quick reaction floating pill on hover (desktop) */}
+      {!message.deletedAt && !selectionMode && (
+        <div
+          className={`hidden sm:flex opacity-0 group-hover:opacity-100 transition-all duration-150 absolute -top-5 ${
+            isMine ? 'right-12' : 'left-12'
+          } z-20 items-center gap-0.5 rounded-full border border-base-300 bg-base-100/95 px-1.5 py-0.5 shadow-md backdrop-blur-md pointer-events-none group-hover:pointer-events-auto`}
+        >
+          {QUICK_REACTIONS.map((emoji) => {
+            const hasReacted = Boolean(reactionGroups[emoji]?.hasMine);
+            return (
+              <button
+                key={emoji}
+                type="button"
+                disabled={isBusy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleReaction(emoji);
+                }}
+                className={`h-7 w-7 flex items-center justify-center text-sm rounded-full transition-transform hover:scale-130 active:scale-95 ${
+                  hasReacted ? 'bg-primary/20 scale-110' : 'hover:bg-base-200'
+                }`}
+                title={hasReacted ? t('Remove {emoji}', { emoji }) : emoji}
+              >
+                {emoji}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Bubble */}
       <div
         ref={bubbleRef}
@@ -296,6 +358,30 @@ export default function MessageBubble({
             className="menu menu-sm w-52 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-xl"
           >
               {!message.deletedAt && <>
+                <li className="p-1 mb-1 border-b border-base-300">
+                  <div className="flex items-center justify-between gap-1 w-full p-0 hover:bg-transparent">
+                    {QUICK_REACTIONS.map((emoji) => {
+                      const hasReacted = Boolean(reactionGroups[emoji]?.hasMine);
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => {
+                            handleToggleReaction(emoji);
+                            closeMenu();
+                          }}
+                          className={`btn btn-ghost btn-xs btn-circle text-base hover:scale-125 transition-transform ${
+                            hasReacted ? 'bg-primary/20 scale-110' : ''
+                          }`}
+                          title={hasReacted ? t('Remove {emoji}', { emoji }) : emoji}
+                        >
+                          {emoji}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </li>
                 <li><button onClick={() => window.alert(t('Message sent {time}{edited}.', { time: formatMsgTime(message.createdAt, language), edited: message.editedAt ? t(' and edited') : '' }))}><Info size={17} /> {t('Message info')}</button></li>
                 <li><button onClick={() => { onReply(message); closeMenu(); }}><Reply size={17} /> {t('Reply')}</button></li>
                 <li><button onClick={async () => { if (!message.text) return; await navigator.clipboard.writeText(message.text); toast.success(t('Message copied')); }}><Copy size={17} /> {t('Copy')}</button></li>
@@ -437,6 +523,38 @@ export default function MessageBubble({
             documentName={message.documentName}
             className="mt-2 max-w-[280px] rounded-lg border border-base-content/20 bg-base-100/20 p-2"
           />
+        )}
+
+        {/* Reaction badges */}
+        {reactionList.length > 0 && !message.deletedAt && (
+          <div
+            className={`flex flex-wrap gap-1 mt-1.5 pt-1 ${
+              isMine ? 'justify-end' : 'justify-start'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {reactionList.map(({ emoji, count, hasMine }) => (
+              <button
+                key={emoji}
+                type="button"
+                disabled={isBusy}
+                onClick={() => handleToggleReaction(emoji)}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shadow-xs transition-all duration-150 hover:scale-105 active:scale-95 ${
+                  hasMine
+                    ? isMine
+                      ? 'bg-primary-focus/40 text-primary-content border-primary-content/50 font-bold'
+                      : 'bg-primary/20 text-primary border-primary/40 font-bold'
+                    : isMine
+                      ? 'bg-black/20 text-primary-content/90 border-primary-content/20'
+                      : 'bg-base-100 text-base-content/80 border-base-300'
+                }`}
+                title={hasMine ? t('Click to remove reaction') : t('Click to react')}
+              >
+                <span className="text-sm leading-none">{emoji}</span>
+                {count > 1 && <span className="text-[11px] leading-none opacity-90">{count}</span>}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 

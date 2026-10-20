@@ -321,6 +321,21 @@ fetchUsers: async () => {
     }
   },
 
+  toggleReaction: async (messageId, emoji) => {
+    try {
+      const res = await api.patch(`/messages/${messageId}/react`, { emoji });
+      set((state) => ({
+        messages: state.messages.map((message) =>
+          message._id === messageId ? res.data : message
+        ),
+      }));
+      return res.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to update reaction'));
+      throw err;
+    }
+  },
+
   forwardMessage: async (messageId, receiverId) => {
     try {
       const res = await api.post(`/messages/${messageId}/forward`, { receiverId });
@@ -370,6 +385,11 @@ fetchUsers: async () => {
         messages: state.messages.map((item) => item._id === message._id ? message : item),
       }));
     };
+    const onMessageReaction = (message) => {
+      set((state) => ({
+        messages: state.messages.map((item) => item._id === message._id ? message : item),
+      }));
+    };
     const onProfileUpdated = (profile) => {
       set((state) => ({
         users: state.users.map((user) => String(user._id) === String(profile._id)
@@ -415,6 +435,7 @@ fetchUsers: async () => {
     socket.on('messageEdited', onMessageEdited);
     socket.on('messageDeleted', onMessageDeleted);
     socket.on('messagePinned', onMessagePinned);
+    socket.on('messageReaction', onMessageReaction);
     socket.on('profileUpdated', onProfileUpdated);
     socket.on('typing:start', onTypingStart);
     socket.on('typing:stop', onTypingStop);
@@ -438,6 +459,7 @@ fetchUsers: async () => {
     socket.off('messageEdited');
     socket.off('messageDeleted');
     socket.off('messagePinned');
+    socket.off('messageReaction');
     socket.off('profileUpdated');
     socket.off('typing:start');
     socket.off('typing:stop');
