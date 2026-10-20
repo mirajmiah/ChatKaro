@@ -223,6 +223,7 @@ export const searchContact = async (req, res) => {
         ...publicContact,
         requestStatus,
         isHidden: Boolean(isHidden),
+        requestId: request?.status === 'pending' ? request._id : null,
       },
     });
   } catch (error) {
@@ -444,14 +445,20 @@ export const declineContactRequest = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.requestId)) {
       return res.status(400).json({ message: 'Invalid contact request.' });
     }
-    const request = await ContactRequest.findOneAndDelete({
+    const request = await ContactRequest.findOne({
       _id: req.params.requestId,
-      recipient: req.user._id,
       status: 'pending',
+      $or: [{ recipient: req.user._id }, { sender: req.user._id }],
     });
     if (!request) return res.status(404).json({ message: 'Pending contact request not found.' });
+
+    const isSender = request.sender.toString() === req.user._id.toString();
+    await ContactRequest.deleteOne({ _id: request._id });
     emitToUser(request.sender.toString(), 'contactsUpdated');
-    return res.status(200).json({ message: 'Contact request declined.' });
+    emitToUser(request.recipient.toString(), 'contactsUpdated');
+    return res.status(200).json({
+      message: isSender ? 'Contact request withdrawn.' : 'Contact request declined.',
+    });
   } catch (error) {
     console.error('declineContactRequest error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
