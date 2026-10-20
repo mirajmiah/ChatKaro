@@ -73,7 +73,10 @@ export const signup = async (req, res) => {
       user.signupOtpHash = undefined;
       user.signupOtpExpires = undefined;
       await user.save();
-      return res.status(503).json({ message: 'We could not send your verification email. The email service is currently unavailable; please try again later.' });
+      return res.status(503).json({
+        message: 'We could not send your verification email. The email service is currently unavailable; please try again later.',
+        detail: error.message,
+      });
     }
 
     return res.status(200).json({
@@ -153,7 +156,10 @@ export const resendSignupOtp = async (req, res) => {
       user.signupOtpHash = undefined;
       user.signupOtpExpires = undefined;
       await user.save();
-      return res.status(503).json({ message: 'We could not send your verification email. The email service is currently unavailable; please try again later.' });
+      return res.status(503).json({
+        message: 'We could not send your verification email. The email service is currently unavailable; please try again later.',
+        detail: error.message,
+      });
     }
     return res.status(200).json({ message: 'A new verification code was sent to your email.' });
   } catch (error) {
@@ -377,7 +383,10 @@ export const forgotPassword = async (req, res) => {
         user.resetPasswordOtpHash = undefined;
         user.resetPasswordOtpExpires = undefined;
         await user.save();
-        return res.status(503).json({ message: 'We could not send your password reset email. The email service is currently unavailable; please try again later.' });
+        return res.status(503).json({
+          message: 'We could not send your password reset email. The email service is currently unavailable; please try again later.',
+          detail: error.message,
+        });
       }
     }
 
@@ -419,4 +428,39 @@ export const resetPassword = async (req, res) => {
     console.error('resetPassword error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
+};
+
+export const getEmailStatus = async (_req, res) => {
+  const user = (process.env.GMAIL_USER || process.env.SMTP_USER || '').trim();
+  const clientId = (process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.GMAIL_CLIENT_SECRET || '').trim();
+  const refreshToken = (process.env.GMAIL_REFRESH_TOKEN || '').trim();
+
+  const status = {
+    hasGmailUser: Boolean(user),
+    userEmail: user ? user.replace(/(?<=^.).*(?=@)/, '***') : null,
+    hasGmailClientId: Boolean(clientId),
+    hasGmailClientSecret: Boolean(clientSecret),
+    hasGmailRefreshToken: Boolean(refreshToken),
+    configured: Boolean(user && clientId && clientSecret && refreshToken),
+    hasBrevoKey: Boolean((process.env.BREVO_API_KEY || '').trim()),
+    hasResendKey: Boolean((process.env.RESEND_API_KEY || '').trim()),
+  };
+
+  if (status.configured) {
+    try {
+      const client = new OAuth2Client(clientId, clientSecret);
+      client.setCredentials({ refresh_token: refreshToken });
+      const tokenResult = await client.getAccessToken();
+      const token = typeof tokenResult === 'string' ? tokenResult : tokenResult?.token;
+      status.oauthStatus = token ? 'valid' : 'empty';
+    } catch (err) {
+      status.oauthStatus = 'error';
+      status.oauthError = err.message;
+    }
+  } else {
+    status.oauthStatus = 'missing_credentials';
+  }
+
+  return res.status(200).json(status);
 };

@@ -28,7 +28,10 @@ export const useAuthStore = create((set, get) => ({
       toast.success(translateCurrent('Verification code sent to your email.'));
       return res.data;
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Signup failed'));
+      const msg = err.response?.data?.detail
+        ? `${err.response.data.message} (${err.response.data.detail})`
+        : err.response?.data?.message || 'Signup failed';
+      toast.error(translateCurrent(msg));
       throw err;
     }
   },
@@ -52,7 +55,10 @@ export const useAuthStore = create((set, get) => ({
       toast.success(translateCurrent(res.data.message));
       return res.data;
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Unable to resend verification code'));
+      const msg = err.response?.data?.detail
+        ? `${err.response.data.message} (${err.response.data.detail})`
+        : err.response?.data?.message || 'Unable to resend verification code';
+      toast.error(translateCurrent(msg));
       throw err;
     }
   },

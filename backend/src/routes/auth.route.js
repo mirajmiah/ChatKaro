@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import {
   signup,
   verifySignupOtp,
@@ -12,12 +12,14 @@ import {
   updateName,
   forgotPassword,
   resetPassword,
+  getEmailStatus,
 } from '../controllers/auth.controller.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
 import { authLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = express.Router();
 
+router.get('/email-status', getEmailStatus);
 router.post('/signup', authLimiter, signup);
 router.post('/signup/verify-otp', authLimiter, verifySignupOtp);
 router.post('/signup/resend-otp', authLimiter, resendSignupOtp);
