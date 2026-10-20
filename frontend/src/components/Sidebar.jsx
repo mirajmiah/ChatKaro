@@ -272,7 +272,7 @@ export default function Sidebar() {
             {isSearchingContact ? <span className="loading loading-spinner loading-xs" /> : <Search size={17} />}
           </button>
         </form>
-        <p className="px-1 text-xs leading-relaxed text-base-content/60">
+        <p className="px-1 text-xs leading-relaxed font-semibold text-primary">
           {t('Enter an email, search, and send a request. Start chatting after they accept.')}
         </p>
         {contactSearchResult && (
