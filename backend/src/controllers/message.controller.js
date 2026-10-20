@@ -764,7 +764,7 @@ export const sendMessage = async (req, res) => {
     let audioDurationNum;
     let documentUrl;
     if (image || video || audio || document) {
-      const media = image || video || audio || document;
+      let media = image || video || audio || document;
       const maxBase64Length = document
         ? MAX_DOCUMENT_BASE64_LENGTH
         : MAX_IMAGE_VIDEO_BASE64_LENGTH;
@@ -775,6 +775,14 @@ export const sendMessage = async (req, res) => {
             : audio
             ? 'Voice notes must be 10 MB or smaller.'
             : 'Images and videos must be 10 MB or smaller.',
+        });
+      }
+
+      // Cloudinary's data URI parser does not support parameters like ;codecs=opus in MIME type
+      if (audio && typeof media === 'string' && media.startsWith('data:audio/')) {
+        media = media.replace(/^data:audio\/[^;]+(;[^;]+)*;base64,/, (header) => {
+          const match = header.match(/^data:(audio\/[^;]+)/);
+          return match ? `data:${match[1]};base64,` : header;
         });
       }
 

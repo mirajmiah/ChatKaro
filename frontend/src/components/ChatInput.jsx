@@ -282,7 +282,8 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
 
     recorder.onstop = () => {
       const mimeType = recorder.mimeType || 'audio/webm';
-      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+      const cleanMime = mimeType.split(';')[0] || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: cleanMime });
 
       if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -303,10 +304,18 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
 
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Data = reader.result;
+        let base64Data = reader.result;
         if (!base64Data || typeof base64Data !== 'string') {
           toast.error(t('Failed to process recorded audio.'));
           return;
+        }
+
+        // Clean any codec parameters in data URI for Cloudinary compatibility
+        if (base64Data.startsWith('data:audio/')) {
+          base64Data = base64Data.replace(/^data:audio\/[^;]+(;[^;]+)*;base64,/, (header) => {
+            const match = header.match(/^data:(audio\/[^;]+)/);
+            return match ? `data:${match[1]};base64,` : header;
+          });
         }
 
         setIsSending(true);
