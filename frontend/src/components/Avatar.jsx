@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 
-// Generates consistent, attractive color for user initials
+// Generates consistent, attractive, vibrant color for user initials
 function getInitialsColor(name = '') {
   const colors = [
-    'bg-primary/20 text-primary border-primary/30',
-    'bg-secondary/20 text-secondary border-secondary/30',
-    'bg-accent/20 text-accent border-accent/30',
-    'bg-info/20 text-info border-info/30',
-    'bg-success/20 text-success border-success/30',
-    'bg-warning/20 text-warning border-warning/30',
+    'bg-indigo-600 text-white',
+    'bg-emerald-600 text-white',
+    'bg-blue-600 text-white',
+    'bg-amber-600 text-white',
+    'bg-rose-600 text-white',
+    'bg-teal-600 text-white',
+    'bg-violet-600 text-white',
+    'bg-cyan-600 text-white',
+    'bg-fuchsia-600 text-white',
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -31,9 +34,10 @@ export function InitialsAvatar({ name, size = 'w-10 h-10', textSize = 'text-sm',
 
   return (
     <div
-      className={`${size} ${colorClass} ${textSize} rounded-full font-bold flex items-center justify-center shrink-0 select-none border ${className}`}
+      className={`${size} ${colorClass} ${textSize} rounded-full font-bold inline-flex items-center justify-center shrink-0 select-none shadow-sm ${className}`}
+      style={{ aspectRatio: '1 / 1' }}
     >
-      {initials}
+      <span className="leading-none">{initials}</span>
     </div>
   );
 }

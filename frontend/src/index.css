@@ -170,6 +170,9 @@
     overflow: hidden !important;
     border-radius: 9999px !important;
     align-self: flex-end;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
   .chat .chat-image img {
     width: 100% !important;

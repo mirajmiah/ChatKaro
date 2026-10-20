@@ -234,7 +234,17 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       }
     } catch (err) {
       console.error('Microphone error:', err);
-      toast.error(t('Microphone access was denied or is unavailable.'));
+      if (typeof window !== 'undefined' && window.isSecureContext === false) {
+        toast.error(t('Voice recording requires a secure connection (HTTPS or localhost).'), { duration: 6000 });
+      } else if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        toast.error(t('Microphone permission blocked. Click the lock/site icon in your browser address bar to allow microphone.'), { duration: 6000 });
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        toast.error(t('No microphone found on your device.'), { duration: 5000 });
+      } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+        toast.error(t('Microphone is in use by another application.'), { duration: 5000 });
+      } else {
+        toast.error(t('Microphone access was denied or is unavailable. Please check your browser permissions.'), { duration: 5000 });
+      }
     }
   };
 

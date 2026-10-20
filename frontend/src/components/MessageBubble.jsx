@@ -251,7 +251,7 @@ export default function MessageBubble({
         </button>
       )}
       {/* Avatar — only render on the last message of consecutive group */}
-      <div className="chat-image avatar h-8 w-8 shrink-0 overflow-hidden rounded-full self-end">
+      <div className="chat-image h-8 w-8 shrink-0 overflow-hidden rounded-full self-end flex items-center justify-center">
         {isSameSenderAsNext ? (
           <div className="h-8 w-8 shrink-0" />
         ) : (
