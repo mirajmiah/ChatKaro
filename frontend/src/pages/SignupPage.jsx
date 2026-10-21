@@ -197,7 +197,7 @@ export default function SignUpPage() {
                 onChange={handleChange}
                 required
                 autoComplete="email"
-                placeholder={t('Email placeholder')}
+                placeholder="example@gmail.com"
                 className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#604399] focus:ring-2 focus:ring-[#604399]/20"
               />
             </div>

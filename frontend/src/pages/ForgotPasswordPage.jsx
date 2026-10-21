@@ -131,7 +131,7 @@ export default function ForgotPasswordPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder={t('Email placeholder')}
+                placeholder="example@gmail.com"
                 required
                 autoComplete="email"
                 disabled={otpSent || resetComplete}
