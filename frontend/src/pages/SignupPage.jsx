@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
@@ -18,7 +18,7 @@ function SupportIllustration() {
   );
 }
 
-export default function SignupPage() {
+export default function SignUpPage() {
   const { signup, verifySignupOtp, resendSignupOtp, googleLogin } = useAuthStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -29,6 +29,15 @@ export default function SignupPage() {
   const [isResending, setIsResending] = useState(false);
   const [verificationStep, setVerificationStep] = useState(false);
   const [otp, setOtp] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleChange = (event) => {
     setFormData((previous) => ({ ...previous, [event.target.name]: event.target.value }));
@@ -40,6 +49,7 @@ export default function SignupPage() {
     try {
       await signup(formData);
       setVerificationStep(true);
+      setResendCooldown(30);
     } catch {
       // Errors are reported by the auth store.
     } finally {
@@ -61,9 +71,11 @@ export default function SignupPage() {
   };
 
   const handleResendOtp = async () => {
+    if (isResending || resendCooldown > 0) return;
     setIsResending(true);
     try {
       await resendSignupOtp(formData.email);
+      setResendCooldown(30);
     } catch {
       // Errors are reported by the auth store.
     } finally {
@@ -135,10 +147,14 @@ export default function SignupPage() {
             <button
               type="button"
               onClick={handleResendOtp}
-              disabled={isResending}
-              className="mt-5 text-sm font-medium text-[#604399] underline underline-offset-2 disabled:opacity-60"
+              disabled={isResending || resendCooldown > 0}
+              className="mt-5 text-sm font-medium text-[#604399] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isResending ? t('Sending…') : t('Resend verification code')}
+              {isResending
+                ? t('Sending…')
+                : resendCooldown > 0
+                ? `${t('Resend verification code')} (${resendCooldown}s)`
+                : t('Resend verification code')}
             </button>
             <button
               type="button"

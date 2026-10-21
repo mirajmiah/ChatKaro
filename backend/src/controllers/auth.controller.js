@@ -110,10 +110,18 @@ export const verifySignupOtp = async (req, res) => {
     const user = await User.findOne({
       email,
       emailVerified: false,
-      signupOtpHash: otpHash,
-      signupOtpExpires: { $gt: Date.now() },
-    });
-    if (!user) return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    }).select('+signupOtpHash +signupOtpExpires');
+
+    if (!user) return res.status(404).json({ message: 'Unverified signup not found. Please create your account again.' });
+
+    const expiresAt = user.signupOtpExpires ? new Date(user.signupOtpExpires).getTime() : 0;
+    if (!user.signupOtpHash || !expiresAt || Date.now() > expiresAt) {
+      return res.status(400).json({ message: 'Verification code has expired. Please request a new code.' });
+    }
+
+    if (user.signupOtpHash !== otpHash) {
+      return res.status(400).json({ message: 'Invalid verification code.' });
+    }
 
     user.fullName = fullName;
     user.password = await bcryptjs.hash(password, 12);
@@ -225,14 +233,23 @@ export const verifyLoginOtp = async (req, res) => {
     }
 
     const hashedOtp = hashOtp(otp);
-    const user = await User.findOne({
-      email,
-      loginOtpHash: hashedOtp,
-      loginOtpExpires: { $gt: Date.now() },
-    });
+    const user = await User.findOne({ email }).select('+loginOtpHash +loginOtpExpires');
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired verification code.' });
+      return res.status(400).json({ message: 'Invalid credentials.' });
+    }
+
+    const expiresAt = user.loginOtpExpires ? new Date(user.loginOtpExpires).getTime() : 0;
+    if (!user.loginOtpHash || !expiresAt) {
+      return res.status(400).json({ message: 'Sign-in session expired. Please enter your password again.' });
+    }
+
+    if (Date.now() > expiresAt) {
+      return res.status(400).json({ message: 'Verification code has expired. Please click "Resend verification code" or sign in again.' });
+    }
+
+    if (user.loginOtpHash !== hashedOtp) {
+      return res.status(400).json({ message: 'Invalid verification code.' });
     }
 
     user.loginOtpHash = undefined;
@@ -261,9 +278,15 @@ export const verifyLoginOtp = async (req, res) => {
 export const resendLoginOtp = async (req, res) => {
   try {
     const email = typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
-    const user = email ? await User.findOne({ email }) : null;
+    const user = email ? await User.findOne({ email }).select('+loginOtpExpires +loginOtpHash') : null;
 
-    if (!user || !user.loginOtpExpires || user.loginOtpExpires < Date.now() - 10 * 60 * 1000) {
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const expiresAt = user.loginOtpExpires ? new Date(user.loginOtpExpires).getTime() : 0;
+    // Allow resending during active OTP window and up to 15 minutes after it expires (total 25 minutes from password verification)
+    if (!expiresAt || Date.now() > expiresAt + 15 * 60 * 1000) {
       return res.status(400).json({ message: 'Sign-in session expired. Please enter your password again.' });
     }
 
@@ -485,14 +508,19 @@ export const resetPassword = async (req, res) => {
     const emailAddress = typeof email === 'string' ? email.toLowerCase().trim() : '';
     const hashedOtp = hashOtp(String(otp || ''));
 
-    const user = await User.findOne({
-      email: emailAddress,
-      resetPasswordOtpHash: hashedOtp,
-      resetPasswordOtpExpires: { $gt: Date.now() },
-    });
+    const user = await User.findOne({ email: emailAddress }).select('+resetPasswordOtpHash +resetPasswordOtpExpires');
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    }
+
+    const expiresAt = user.resetPasswordOtpExpires ? new Date(user.resetPasswordOtpExpires).getTime() : 0;
+    if (!user.resetPasswordOtpHash || !expiresAt || Date.now() > expiresAt) {
+      return res.status(400).json({ message: 'Password reset code has expired. Please request a new one.' });
+    }
+
+    if (user.resetPasswordOtpHash !== hashedOtp) {
+      return res.status(400).json({ message: 'Invalid verification code.' });
     }
 
     if (!password || password.length < 6) {

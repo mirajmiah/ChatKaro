@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
@@ -29,6 +29,15 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleChange = (event) => {
     setFormData((previous) => ({ ...previous, [event.target.name]: event.target.value }));
@@ -41,6 +50,8 @@ export default function LoginPage() {
       const res = await login(formData);
       if (res?.otpRequired) {
         setVerificationStep(true);
+        setOtp('');
+        setResendCooldown(30);
         return;
       }
       navigate('/');
@@ -57,19 +68,29 @@ export default function LoginPage() {
     try {
       await verifyLoginOtp(formData.email, otp);
       navigate('/');
-    } catch {
-      // Errors are reported by the auth store.
+    } catch (err) {
+      const msg = err.response?.data?.message || '';
+      if (msg.toLowerCase().includes('session expired') || msg.toLowerCase().includes('password again')) {
+        setVerificationStep(false);
+        setOtp('');
+      }
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handleResendOtp = async () => {
+    if (isResending || resendCooldown > 0) return;
     setIsResending(true);
     try {
       await resendLoginOtp(formData.email);
-    } catch {
-      // Errors are reported by the auth store.
+      setResendCooldown(30);
+    } catch (err) {
+      const msg = err.response?.data?.message || '';
+      if (msg.toLowerCase().includes('session expired') || msg.toLowerCase().includes('password again')) {
+        setVerificationStep(false);
+        setOtp('');
+      }
     } finally {
       setIsResending(false);
     }
@@ -133,10 +154,14 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleResendOtp}
-              disabled={isResending}
-              className="mt-5 text-sm font-medium text-[#604399] underline underline-offset-2 disabled:opacity-60"
+              disabled={isResending || resendCooldown > 0}
+              className="mt-5 text-sm font-medium text-[#604399] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isResending ? t('Sending…') : t('Resend verification code')}
+              {isResending
+                ? t('Sending…')
+                : resendCooldown > 0
+                ? `${t('Resend verification code')} (${resendCooldown}s)`
+                : t('Resend verification code')}
             </button>
 
             <button
