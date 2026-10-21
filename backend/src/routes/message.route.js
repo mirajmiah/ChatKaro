@@ -10,6 +10,7 @@ import {
   respondToContactRequest,
   declineContactRequest,
   removeContact,
+  restoreContact,
   getMessages,
   getMessageDocument,
   markMessagesRead,
@@ -36,6 +37,7 @@ router.delete('/contacts/message-requests/:userId', protectRoute, respondToMessa
 router.patch('/contacts/requests/:requestId/accept', protectRoute, respondToContactRequest);
 router.delete('/contacts/requests/:requestId', protectRoute, declineContactRequest);
 router.post('/contacts', protectRoute, addContact);
+router.post('/contacts/restore/:userId', protectRoute, restoreContact);
 router.delete('/contacts/:userId', protectRoute, removeContact);
 
 // Use a distinct path for clearing a conversation so it cannot be mistaken for a message ID.

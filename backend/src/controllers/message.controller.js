@@ -96,6 +96,27 @@ const areMutualContacts = async (userId, contactId) => {
   return Boolean((legacyMutualContacts[0] && legacyMutualContacts[1]) || acceptedRequest);
 };
 
+const werePreviouslyConnected = async (userId, contactId) => {
+  if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(contactId)) return false;
+  return Boolean(
+    await User.exists({
+      $or: [
+        { _id: userId, contacts: contactId },
+        { _id: contactId, contacts: userId },
+        { _id: userId, hiddenContacts: contactId },
+        { _id: contactId, hiddenContacts: userId },
+      ],
+    }) ||
+    await ContactRequest.exists({
+      $or: [
+        { sender: userId, recipient: contactId },
+        { sender: contactId, recipient: userId },
+      ],
+      status: 'accepted',
+    })
+  );
+};
+
 const hasHiddenConnection = async (userId, contactId) => Boolean(await User.exists({
   $or: [
     { _id: userId, hiddenContacts: contactId },
@@ -206,33 +227,55 @@ export const searchContact = async (req, res) => {
       return res.status(400).json({ message: 'That email belongs to your account.' });
     }
 
+    const wasConnected = await werePreviouslyConnected(req.user._id, contact._id);
+    const [iRemovedContact, otherRemovedMe] = await Promise.all([
+      User.exists({ _id: req.user._id, hiddenContacts: contact._id }),
+      User.exists({ _id: contact._id, hiddenContacts: req.user._id }),
+    ]);
+
     const request = await ContactRequest.findOne({
       $or: [
         { sender: req.user._id, recipient: contact._id },
         { sender: contact._id, recipient: req.user._id },
       ],
     }).select('sender recipient status');
-    const [currentUserHasAdded, contactHasAddedCurrentUser, isHidden] = await Promise.all([
-      User.exists({ _id: req.user._id, contacts: contact._id }),
-      User.exists({ _id: contact._id, contacts: req.user._id }),
-      User.exists({ _id: req.user._id, hiddenContacts: contact._id }),
-    ]);
+
+    const { contacts: _contacts, ...publicContact } = contact.toObject();
+
+    if (wasConnected) {
+      return res.status(200).json({
+        contact: {
+          ...publicContact,
+          wasConnected: true,
+          canMessage: true,
+          iRemovedContact: Boolean(iRemovedContact),
+          otherRemovedMe: Boolean(otherRemovedMe),
+          isMessageRequest: Boolean(otherRemovedMe),
+          requestStatus: (!iRemovedContact && !otherRemovedMe) ? 'accepted' : 'can_message',
+          isHidden: Boolean(iRemovedContact),
+          requestId: null,
+        },
+      });
+    }
+
     const requestStatus = request?.status === 'accepted'
       ? 'accepted'
       : request?.sender.toString() === req.user._id.toString()
         ? 'sent'
         : request
           ? 'received'
-          : currentUserHasAdded && contactHasAddedCurrentUser
-            ? 'accepted'
-            : null;
-    const { contacts: _contacts, ...publicContact } = contact.toObject();
+          : null;
 
     return res.status(200).json({
       contact: {
         ...publicContact,
+        wasConnected: false,
+        canMessage: false,
+        iRemovedContact: false,
+        otherRemovedMe: false,
+        isMessageRequest: false,
         requestStatus,
-        isHidden: Boolean(isHidden),
+        isHidden: false,
         requestId: request?.status === 'pending' ? request._id : null,
       },
     });
@@ -408,6 +451,25 @@ export const respondToMessageRequest = async (req, res) => {
         { _id: { $in: [req.user._id, senderId] } },
         { $pull: { hiddenContacts: { $in: [req.user._id, senderId] } } }
       );
+      await Promise.all([
+        User.updateOne({ _id: req.user._id }, { $addToSet: { contacts: senderId } }),
+        User.updateOne({ _id: senderId }, { $addToSet: { contacts: req.user._id } }),
+        ContactRequest.findOneAndUpdate(
+          {
+            $or: [
+              { sender: req.user._id, recipient: senderId },
+              { sender: senderId, recipient: req.user._id },
+            ],
+          },
+          {
+            sender: senderId,
+            recipient: req.user._id,
+            status: 'accepted',
+            acceptedAt: new Date(),
+          },
+          { upsert: true }
+        ),
+      ]);
     }
 
     emitToUser(senderId, 'contactsUpdated');
@@ -514,9 +576,50 @@ export const removeContact = async (req, res) => {
       ),
     ]);
 
+    emitToUser(userId.toString(), 'contactsUpdated');
     return res.status(200).json({ message: 'Contact removed and chat history cleared for you.' });
   } catch (error) {
     console.error('removeContact error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const restoreContact = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.userId)) {
+      return res.status(400).json({ message: 'Invalid contact.' });
+    }
+    const userId = req.user._id;
+    const otherUserId = req.params.userId;
+
+    const wasConnected = await werePreviouslyConnected(userId, otherUserId);
+    if (!wasConnected) {
+      return res.status(404).json({ message: 'No connection found with this user.' });
+    }
+
+    await Promise.all([
+      User.updateOne({ _id: userId }, { $pull: { hiddenContacts: otherUserId }, $addToSet: { contacts: otherUserId } }),
+      ContactRequest.findOneAndUpdate(
+        {
+          $or: [
+            { sender: userId, recipient: otherUserId },
+            { sender: otherUserId, recipient: userId },
+          ],
+        },
+        {
+          sender: userId,
+          recipient: otherUserId,
+          status: 'accepted',
+          acceptedAt: new Date(),
+        },
+        { upsert: true }
+      ),
+    ]);
+
+    emitToUser(userId.toString(), 'contactsUpdated');
+    return res.status(200).json({ message: 'Contact restored.' });
+  } catch (error) {
+    console.error('restoreContact error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };
@@ -525,7 +628,7 @@ export const getMessages = async (req, res) => {
   try {
     const myId = req.user._id;
     const targetId = req.params.userId;
-    if (!await areMutualContacts(myId, targetId)) {
+    if (!await werePreviouslyConnected(myId, targetId)) {
       return res.status(403).json({ message: 'You can only chat with mutual contacts.' });
     }
 
@@ -660,7 +763,7 @@ export const markMessagesRead = async (req, res) => {
   try {
     const myId = req.user._id;
     const senderId = req.params.userId;
-    if (!mongoose.isValidObjectId(senderId) || !(await areMutualContacts(myId, senderId))) {
+    if (!mongoose.isValidObjectId(senderId) || !(await werePreviouslyConnected(myId, senderId))) {
       return res.status(403).json({ message: 'You can only mark a contact conversation as read.' });
     }
 
@@ -723,10 +826,23 @@ export const sendMessage = async (req, res) => {
     if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({ message: 'You cannot message yourself.' });
     }
-    if (!await areMutualContacts(senderId, receiverId)) {
-      return res.status(403).json({ message: 'You can only message mutual contacts. Add each other by email first.' });
+    const isConnectedOrPrevious = await werePreviouslyConnected(senderId, receiverId);
+    if (!isConnectedOrPrevious) {
+      return res.status(403).json({ message: 'You can only message contacts. Add each other by email first.' });
     }
-    const isMessageRequest = await hasHiddenConnection(senderId, receiverId);
+
+    const receiverHasHiddenSender = Boolean(await User.exists({ _id: receiverId, hiddenContacts: senderId }));
+    const senderHasHiddenReceiver = Boolean(await User.exists({ _id: senderId, hiddenContacts: receiverId }));
+
+    // A message is a request IF AND ONLY IF the receiver has hidden/removed the sender!
+    const isMessageRequest = receiverHasHiddenSender;
+
+    // If the sender previously removed the receiver, but the receiver did NOT remove the sender:
+    // The sender is reaching out, so unhide the receiver for the sender immediately with no request or acceptance needed!
+    if (senderHasHiddenReceiver && !receiverHasHiddenSender) {
+      await User.updateOne({ _id: senderId }, { $pull: { hiddenContacts: receiverId } });
+      emitToUser(senderId.toString(), 'contactsUpdated');
+    }
 
     let { text, image, video, audio, audioDuration, document, documentName, replyTo } = req.body;
 
@@ -826,11 +942,12 @@ export const sendMessage = async (req, res) => {
     await message.populate('replyTo', REPLY_PREVIEW_FIELDS);
 
     if (isMessageRequest) {
-      emitToUser(receiverId, 'contactsUpdated');
-      emitToUser(receiverId, 'notification', {
+      emitToUser(receiverId.toString(), 'contactsUpdated');
+      emitToUser(receiverId.toString(), 'notification', {
         type: 'messageRequest',
         name: req.user.fullName,
       });
+      emitToUser(senderId.toString(), 'newMessage', serializeMessage(message, senderId));
     } else {
       emitToConversation(message, 'newMessage');
     }

@@ -588,26 +588,32 @@ export default function MessageBubble({
       <div className="chat-footer flex items-center gap-1 opacity-70 text-[11px] mt-0.5">
         <span>{formatMsgTime(message.createdAt, language)}</span>
         {isMine && !message.deletedAt && (
-          <span
-            className="inline-flex items-center ml-0.5 select-none"
-            title={message.read ? t('Read') : message.delivered ? t('Delivered') : t('Sent')}
-          >
-            {message.read ? (
-              <span className="flex items-center text-primary font-bold">
-                <Check size={13} className="-mr-1.5" strokeWidth={2.5} />
-                <Check size={13} strokeWidth={2.5} />
-              </span>
-            ) : message.delivered ? (
-              <span className="flex items-center text-base-content/60">
-                <Check size={13} className="-mr-1.5" strokeWidth={2} />
-                <Check size={13} strokeWidth={2} />
-              </span>
-            ) : (
-              <span className="text-base-content/60">
-                <Check size={13} strokeWidth={2} />
-              </span>
-            )}
-          </span>
+          message.messageRequestStatus === 'pending' ? (
+            <span className="text-warning text-[10px] font-medium ml-1">
+              · {t('Request pending')}
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center ml-0.5 select-none"
+              title={message.read ? t('Read') : message.delivered ? t('Delivered') : t('Sent')}
+            >
+              {message.read ? (
+                <span className="flex items-center text-primary font-bold">
+                  <Check size={13} className="-mr-1.5" strokeWidth={2.5} />
+                  <Check size={13} strokeWidth={2.5} />
+                </span>
+              ) : message.delivered ? (
+                <span className="flex items-center text-base-content/60">
+                  <Check size={13} className="-mr-1.5" strokeWidth={2} />
+                  <Check size={13} strokeWidth={2} />
+                </span>
+              ) : (
+                <span className="text-base-content/60">
+                  <Check size={13} strokeWidth={2} />
+                </span>
+              )}
+            </span>
+          )
         )}
       </div>
     </div>

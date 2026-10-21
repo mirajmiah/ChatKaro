@@ -33,6 +33,9 @@ export default function ChatWindow() {
   const previousMessageCount = useRef(0);
 
   const isOtherUserTyping = Boolean(selectedUser && typingUsers[String(selectedUser._id)]);
+  const hasPendingSentRequest = messages.some(
+    (m) => String(m.senderId) === String(authUser?._id) && m.messageRequestStatus === 'pending'
+  );
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -215,6 +218,13 @@ export default function ChatWindow() {
           <span className="min-w-0 flex-1 truncate text-sm">{pinnedMessages[0].text || pinnedMessages[0].documentName || (pinnedMessages[0].image ? t('Photo') : pinnedMessages[0].video ? t('Video') : t('Attachment'))}</span>
           {pinnedMessages.length > 1 && <span className="badge badge-sm">{pinnedMessages.length}</span>}
         </button>
+      )}
+
+      {hasPendingSentRequest && (
+        <div className="flex items-center gap-2 border-b border-warning/30 bg-warning/15 px-4 py-2 text-xs text-warning-content">
+          <span className="font-bold">⚠️</span>
+          <span>{t('Your message was sent as a request. Once {name} accepts, you can chat normally.', { name: selectedUser.fullName })}</span>
+        </div>
       )}
 
       {/* Message list */}

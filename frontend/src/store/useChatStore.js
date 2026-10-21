@@ -160,6 +160,15 @@ fetchUsers: async () => {
     }
   },
 
+  restoreContact: async (userId) => {
+    try {
+      await api.post(`/messages/contacts/restore/${userId}`);
+      await get().fetchUsers();
+    } catch (err) {
+      console.error('restoreContact error:', err);
+    }
+  },
+
   selectUser: (user) => {
     set({ selectedUser: user, messages: [] });
   },

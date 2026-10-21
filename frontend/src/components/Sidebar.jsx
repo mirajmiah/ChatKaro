@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { Check, MessageSquare, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -41,6 +41,7 @@ export default function Sidebar() {
     withdrawContactRequest,
     deleteChat,
     removeContact,
+    restoreContact,
     isLoadingUsers,
   } = useChatStore();
   const { authUser, onlineUsers, socket } = useAuthStore();
@@ -183,6 +184,19 @@ export default function Sidebar() {
     }
   };
 
+  const handleStartChatWithContact = async (contact) => {
+    try {
+      if (contact.iRemovedContact) {
+        await restoreContact(contact._id);
+      }
+    } catch {
+      // Proceed even if network fails
+    }
+    selectUser(contact);
+    setContactSearchResult(null);
+    setContactEmail('');
+  };
+
   const handleRespondToRequest = async (request, accept) => {
     try {
       await respondToContactRequest(request._id, accept);
@@ -270,37 +284,54 @@ export default function Sidebar() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{contactSearchResult.fullName}</p>
               <p className="truncate text-xs text-base-content/60">{contactSearchResult.email}</p>
-              {contactSearchResult.requestStatus === 'sent' && (
-                <p className="mt-1 text-xs text-warning">{t('Request sent · waiting for acceptance')}</p>
-              )}
-              {contactSearchResult.requestStatus === 'received' && (
-                <p className="mt-1 text-xs text-warning">{t('They sent you a request · respond below')}</p>
-              )}
-              {contactSearchResult.requestStatus === 'accepted' && !contactSearchResult.isHidden && (
-                <p className="mt-1 text-xs text-success">{t('Connected · chat is available')}</p>
-              )}
-              {contactSearchResult.isHidden && contactSearchResult.requestStatus !== 'sent' && (
-                <p className="mt-1 text-xs text-warning">{t('Removed · you can send a new request to reconnect')}</p>
+              {contactSearchResult.canMessage ? (
+                contactSearchResult.otherRemovedMe && contactSearchResult.iRemovedContact ? (
+                  <p className="mt-1 text-xs text-warning">{t('Both removed each other · Message will be sent as a request')}</p>
+                ) : contactSearchResult.otherRemovedMe ? (
+                  <p className="mt-1 text-xs text-warning">{t('Message will be sent as a request')}</p>
+                ) : contactSearchResult.iRemovedContact ? (
+                  <p className="mt-1 text-xs text-primary">{t('Previously connected · Chat directly')}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-success">{t('Connected · chat is available')}</p>
+                )
+              ) : (
+                <>
+                  {contactSearchResult.requestStatus === 'sent' && (
+                    <p className="mt-1 text-xs text-warning">{t('Request sent · waiting for acceptance')}</p>
+                  )}
+                  {contactSearchResult.requestStatus === 'received' && (
+                    <p className="mt-1 text-xs text-warning">{t('They sent you a request · respond below')}</p>
+                  )}
+                  {contactSearchResult.requestStatus === 'accepted' && (
+                    <p className="mt-1 text-xs text-success">{t('Connected · chat is available')}</p>
+                  )}
+                </>
               )}
             </div>
-            <button
-              type="button"
-              onClick={contactSearchResult.requestStatus === 'sent' ? handleWithdrawContactRequest : handleSendContactRequest}
-              disabled={isAddingContact || Boolean(contactSearchResult.requestStatus && contactSearchResult.requestStatus !== 'sent' && !contactSearchResult.isHidden)}
-              className={`btn btn-xs shrink-0 ${contactSearchResult.requestStatus === 'sent' ? 'btn-outline' : 'btn-primary'}`}
-            >
-              {isAddingContact
-                ? <span className="loading loading-spinner loading-xs" />
-                : contactSearchResult.requestStatus === 'sent'
-                  ? t('Withdraw request')
-                  : contactSearchResult.isHidden
-                    ? <><UserPlus size={14} /> {t('Request again')}</>
+            {contactSearchResult.canMessage ? (
+              <button
+                type="button"
+                onClick={() => handleStartChatWithContact(contactSearchResult)}
+                className="btn btn-xs btn-primary shrink-0 gap-1"
+              >
+                <MessageSquare size={14} /> {t('Message')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={contactSearchResult.requestStatus === 'sent' ? handleWithdrawContactRequest : handleSendContactRequest}
+                disabled={isAddingContact || Boolean(contactSearchResult.requestStatus && contactSearchResult.requestStatus !== 'sent')}
+                className={`btn btn-xs shrink-0 ${contactSearchResult.requestStatus === 'sent' ? 'btn-outline' : 'btn-primary'}`}
+              >
+                {isAddingContact
+                  ? <span className="loading loading-spinner loading-xs" />
+                  : contactSearchResult.requestStatus === 'sent'
+                    ? t('Withdraw request')
                     : contactSearchResult.requestStatus === 'received'
                       ? t('Respond below')
-                      : contactSearchResult.requestStatus === 'accepted'
-                        ? t('Connected')
-                        : <><UserPlus size={14} /> {t('Request')}</>}
-            </button>
+                      : <><UserPlus size={14} /> {t('Request')}</>}
+              </button>
+            )}
           </div>
         )}
         <p className="hidden text-xs text-base-content/50 sm:block">{t('Send a request by email. You can chat after they accept.')}</p>
