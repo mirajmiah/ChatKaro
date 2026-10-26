@@ -4,6 +4,14 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from './useAuthStore.js';
 import { translateCurrent } from '../lib/i18n.js';
 
+const toIdString = (val) => {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (val._id) return String(val._id);
+  if (typeof val.toString === 'function') return val.toString();
+  return String(val);
+};
+
 const sortByLatestMessage = (users) => users.sort((first, second) => (
   new Date(second.latestMessage?.createdAt || 0).getTime()
   - new Date(first.latestMessage?.createdAt || 0).getTime()
@@ -174,10 +182,25 @@ fetchUsers: async () => {
   },
 
   fetchMessages: async (userId) => {
+    const targetId = toIdString(userId);
     set({ isLoadingMessages: true });
     try {
-      const res = await api.get(`/messages/${userId}`);
-      set({ messages: Array.isArray(res.data) ? res.data : [] });
+      const res = await api.get(`/messages/${targetId}`);
+      const serverMessages = Array.isArray(res.data) ? res.data : [];
+      set((state) => {
+        // If selectedUser changed while request was in-flight, don't overwrite
+        if (toIdString(state.selectedUser?._id) !== targetId) {
+          return {};
+        }
+        // Preserve any messages already received via socket that are not yet in server response
+        const serverIds = new Set(serverMessages.map((m) => m._id));
+        const pendingSocketMessages = state.messages.filter(
+          (m) => m._id && !serverIds.has(m._id) && !String(m._id).startsWith('temp-')
+        );
+        return {
+          messages: [...serverMessages, ...pendingSocketMessages],
+        };
+      });
     } catch (err) {
       toast.error(translateCurrent(err.response?.data?.message || 'Failed to load messages'));
     } finally {
@@ -186,25 +209,38 @@ fetchUsers: async () => {
   },
 
   markMessagesRead: async (userId) => {
+    const targetId = toIdString(userId);
     try {
-      await api.patch(`/messages/${userId}/read`);
-      get().clearUnreadCount(userId);
+      await api.patch(`/messages/${targetId}/read`);
+      get().clearUnreadCount(targetId);
     } catch (err) {
-      toast.error(translateCurrent(err.response?.data?.message || 'Failed to mark messages as read'));
+      // Background operation; avoid alarming user if already read
+      console.warn('markMessagesRead error:', err.message);
     }
   },
 
   handleIncomingMessage: (message) => {
+    if (!message || !message._id) return;
     const authUser = useAuthStore.getState().authUser;
     if (!authUser) return;
 
-    const currentUserId = String(authUser._id);
-    const senderId = String(message.senderId);
-    const receiverId = String(message.receiverId);
+    const currentUserId = toIdString(authUser._id);
+    const senderId = toIdString(message.senderId);
+    const receiverId = toIdString(message.receiverId);
     const isIncoming = receiverId === currentUserId;
     const contactId = isIncoming ? senderId : receiverId;
+
     const { selectedUser, users } = get();
-    const isConversationOpen = String(selectedUser?._id) === contactId;
+    const selectedUserId = toIdString(selectedUser?._id);
+
+    // Conversation is open if the selected user is either party to the message
+    const isConversationOpen = Boolean(
+      selectedUserId && (
+        selectedUserId === contactId ||
+        selectedUserId === senderId ||
+        selectedUserId === receiverId
+      )
+    );
 
     if (get()._typingTimeouts?.[contactId]) {
       clearTimeout(get()._typingTimeouts[contactId]);
@@ -212,32 +248,53 @@ fetchUsers: async () => {
 
     set((state) => {
       const exists = state.messages.some((item) => item._id === message._id);
-      return {
-        typingUsers: { ...state.typingUsers, [contactId]: false },
-        messages: isConversationOpen && !exists
-          ? [...state.messages, message]
-          : state.messages,
-        users: sortByLatestMessage(state.users.map((user) => String(user._id) === contactId
+
+      // Instantly append to open conversation
+      let updatedMessages = state.messages;
+      if (isConversationOpen) {
+        if (!exists) {
+          updatedMessages = [...state.messages, message];
+        } else {
+          updatedMessages = state.messages.map((item) => item._id === message._id ? message : item);
+        }
+      }
+
+      // Check if contact already exists in sidebar
+      const userInList = state.users.some((user) => toIdString(user._id) === contactId);
+      const updatedUsers = userInList
+        ? sortByLatestMessage(state.users.map((user) => toIdString(user._id) === contactId
           ? {
               ...user,
               latestMessage: message,
               unreadCount: Math.max(0, (user.unreadCount || 0) + (isIncoming && !isConversationOpen ? 1 : 0)),
             }
-          : user)),
+          : user))
+        : state.users;
+
+      return {
+        typingUsers: { ...state.typingUsers, [contactId]: false },
+        messages: updatedMessages,
+        users: updatedUsers,
       };
     });
+
+    // If contact is not yet in sidebar, refresh user list immediately
+    if (!users.some((u) => toIdString(u._id) === contactId)) {
+      get().fetchUsers();
+    }
 
     if (isIncoming && isConversationOpen) {
       get().markMessagesRead(contactId);
     } else if (isIncoming) {
-      const contact = users.find((user) => String(user._id) === contactId);
+      const contact = users.find((user) => toIdString(user._id) === contactId);
       toast(translateCurrent('New message from {name}', { name: contact?.fullName || translateCurrent('someone') }));
     }
   },
 
   clearUnreadCount: (userId) => {
+    const id = toIdString(userId);
     set((state) => ({
-      users: state.users.map((user) => String(user._id) === String(userId)
+      users: state.users.map((user) => toIdString(user._id) === id
         ? { ...user, unreadCount: 0 }
         : user),
     }));
@@ -246,12 +303,13 @@ fetchUsers: async () => {
   handleMessagesRead: (senderId) => get().clearUnreadCount(senderId),
 
   deleteChat: async (userId) => {
+    const targetId = toIdString(userId);
     try {
-      const res = await api.delete(`/messages/clear-chat/${userId}`);
+      const res = await api.delete(`/messages/clear-chat/${targetId}`);
       // Clear the open conversation and its sidebar preview immediately.
       set((state) => ({
-        messages: String(state.selectedUser?._id) === String(userId) ? [] : state.messages,
-        users: state.users.map((user) => String(user._id) === String(userId)
+        messages: toIdString(state.selectedUser?._id) === targetId ? [] : state.messages,
+        users: state.users.map((user) => toIdString(user._id) === targetId
           ? { ...user, latestMessage: null, unreadCount: 0 }
           : user),
       }));
@@ -266,10 +324,58 @@ fetchUsers: async () => {
   },
 
   sendMessage: async (receiverId, data) => {
+    const authUser = useAuthStore.getState().authUser;
+    const currentUserId = toIdString(authUser?._id);
+    const targetId = toIdString(receiverId);
+
+    // Optimistically render simple text messages with 0ms delay
+    let tempId = null;
+    const isSimpleText = Boolean(data.text && !data.image && !data.video && !data.audio && !data.document);
+    if (isSimpleText && currentUserId) {
+      tempId = `temp-${Date.now()}`;
+      const tempMessage = {
+        _id: tempId,
+        senderId: currentUserId,
+        receiverId: targetId,
+        text: data.text,
+        replyTo: data.replyTo ? get().messages.find((m) => m._id === data.replyTo) : undefined,
+        createdAt: new Date().toISOString(),
+        delivered: false,
+        read: false,
+        isOptimistic: true,
+      };
+      set((state) => ({
+        messages: [...state.messages, tempMessage],
+      }));
+    }
+
     try {
-      const res = await api.post(`/messages/send/${receiverId}`, data, { timeout: 120000 });
-      get().addMessage(res.data);
+      const res = await api.post(`/messages/send/${targetId}`, data, { timeout: 120000 });
+      set((state) => {
+        const confirmed = res.data;
+        const messages = tempId
+          ? state.messages.map((m) => (m._id === tempId ? confirmed : m))
+          : state.messages.some((m) => m._id === confirmed._id)
+          ? state.messages
+          : [...state.messages, confirmed];
+
+        const users = sortByLatestMessage(
+          state.users.map((user) =>
+            toIdString(user._id) === targetId
+              ? { ...user, latestMessage: confirmed }
+              : user
+          )
+        );
+
+        return { messages, users };
+      });
+      return res.data;
     } catch (err) {
+      if (tempId) {
+        set((state) => ({
+          messages: state.messages.filter((m) => m._id !== tempId),
+        }));
+      }
       toast.error(translateCurrent(err.response?.data?.message || 'Failed to send message'));
       throw err;
     }
@@ -375,46 +481,65 @@ fetchUsers: async () => {
   subscribeToMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
+    if (get()._isSocketSubscribed && get()._subscribedSocketId === socket.id) {
+      return;
+    }
 
-    // Stable handlers let us remove only this store's listeners during cleanup.
+    // Unsubscribe cleanly from any previous socket instance
+    get().unsubscribeFromMessages();
+
     const onNewMessage = (message) => get().handleIncomingMessage(message);
+
     const onMessageEdited = (message) => {
+      const msgId = toIdString(message._id);
+      const sId = toIdString(message.senderId);
+      const rId = toIdString(message.receiverId);
       set((state) => ({
-        messages: state.messages.map((item) => item._id === message._id ? message : item),
-        users: state.users.map((user) => String(user._id) === String(message.senderId) || String(user._id) === String(message.receiverId)
-          ? { ...user, latestMessage: user.latestMessage?._id === message._id ? message : user.latestMessage }
+        messages: state.messages.map((item) => toIdString(item._id) === msgId ? message : item),
+        users: state.users.map((user) => (toIdString(user._id) === sId || toIdString(user._id) === rId)
+          ? { ...user, latestMessage: toIdString(user.latestMessage?._id) === msgId ? message : user.latestMessage }
           : user),
       }));
     };
+
     const onMessageDeleted = (message) => {
+      const msgId = toIdString(message._id);
+      const sId = toIdString(message.senderId);
+      const rId = toIdString(message.receiverId);
       set((state) => ({
-        messages: state.messages.map((item) => item._id === message._id ? message : item),
-        users: state.users.map((user) => String(user._id) === String(message.senderId) || String(user._id) === String(message.receiverId)
-          ? { ...user, latestMessage: user.latestMessage?._id === message._id ? message : user.latestMessage }
+        messages: state.messages.map((item) => toIdString(item._id) === msgId ? message : item),
+        users: state.users.map((user) => (toIdString(user._id) === sId || toIdString(user._id) === rId)
+          ? { ...user, latestMessage: toIdString(user.latestMessage?._id) === msgId ? message : user.latestMessage }
           : user),
       }));
     };
+
     const onMessagePinned = (message) => {
+      const msgId = toIdString(message._id);
       set((state) => ({
-        messages: state.messages.map((item) => item._id === message._id ? message : item),
+        messages: state.messages.map((item) => toIdString(item._id) === msgId ? message : item),
       }));
     };
+
     const onMessageReaction = (message) => {
+      const msgId = toIdString(message._id);
       set((state) => ({
-        messages: state.messages.map((item) => item._id === message._id ? message : item),
+        messages: state.messages.map((item) => toIdString(item._id) === msgId ? message : item),
       }));
     };
+
     const onProfileUpdated = (profile) => {
+      const pId = toIdString(profile._id);
       set((state) => ({
-        users: state.users.map((user) => String(user._id) === String(profile._id)
+        users: state.users.map((user) => toIdString(user._id) === pId
           ? { ...user, profilePic: profile.profilePic }
           : user),
-        selectedUser: String(state.selectedUser?._id) === String(profile._id)
+        selectedUser: toIdString(state.selectedUser?._id) === pId
           ? { ...state.selectedUser, profilePic: profile.profilePic }
           : state.selectedUser,
         messages: state.messages.map((message) => ({
           ...message,
-          sender: message.sender && String(message.sender._id || message.sender) === String(profile._id)
+          sender: message.sender && toIdString(message.sender._id || message.sender) === pId
             ? { ...message.sender, profilePic: profile.profilePic }
             : message.sender,
         })),
@@ -423,7 +548,7 @@ fetchUsers: async () => {
 
     const onTypingStart = ({ senderId }) => {
       if (!senderId) return;
-      const id = String(senderId);
+      const id = toIdString(senderId);
       if (get()._typingTimeouts?.[id]) {
         clearTimeout(get()._typingTimeouts[id]);
       }
@@ -441,7 +566,7 @@ fetchUsers: async () => {
 
     const onTypingStop = ({ senderId }) => {
       if (!senderId) return;
-      const id = String(senderId);
+      const id = toIdString(senderId);
       if (get()._typingTimeouts?.[id]) {
         clearTimeout(get()._typingTimeouts[id]);
       }
@@ -451,47 +576,92 @@ fetchUsers: async () => {
     };
 
     const onMessagesRead = ({ readerId, senderId }) => {
+      const readerStr = toIdString(readerId);
+      const senderStr = toIdString(senderId);
       set((state) => ({
         messages: state.messages.map((item) =>
-          (String(item.receiverId) === String(readerId) || String(item.senderId) === String(senderId))
+          (toIdString(item.senderId) === senderStr && toIdString(item.receiverId) === readerStr)
             ? { ...item, read: true, delivered: true }
             : item
         ),
       }));
     };
 
-    socket.on('newMessage', onNewMessage);
-    socket.on('messageEdited', onMessageEdited);
-    socket.on('messageDeleted', onMessageDeleted);
-    socket.on('messagePinned', onMessagePinned);
-    socket.on('messageReaction', onMessageReaction);
-    socket.on('profileUpdated', onProfileUpdated);
-    socket.on('typing:start', onTypingStart);
-    socket.on('typing:stop', onTypingStop);
-    socket.on('messagesRead', onMessagesRead);
+    const onContactsUpdated = () => {
+      get().fetchUsers();
+      get().fetchContactRequests();
+      get().fetchMessageRequests();
+    };
+
+    // Auto-resync when connection recovers from brief disconnect
+    const onConnect = () => {
+      const selected = get().selectedUser;
+      if (selected?._id) {
+        get().fetchMessages(selected._id);
+      }
+      get().fetchUsers();
+      get().fetchContactRequests();
+      get().fetchMessageRequests();
+    };
+
+    const onNotification = ({ type, name }) => {
+      const messages = {
+        contactRequest: 'New contact request from {name}',
+        messageRequest: 'New message request from {name}',
+        contactAccepted: '{name} accepted your contact request',
+      };
+      if (messages[type]) toast(translateCurrent(messages[type], { name }));
+    };
+
+    const listeners = {
+      newMessage: onNewMessage,
+      messageEdited: onMessageEdited,
+      messageDeleted: onMessageDeleted,
+      messagePinned: onMessagePinned,
+      messageReaction: onMessageReaction,
+      profileUpdated: onProfileUpdated,
+      'typing:start': onTypingStart,
+      'typing:stop': onTypingStop,
+      messagesRead: onMessagesRead,
+      contactsUpdated: onContactsUpdated,
+      connect: onConnect,
+      notification: onNotification,
+    };
+
+    for (const [event, fn] of Object.entries(listeners)) {
+      socket.on(event, fn);
+    }
+
+    set({
+      _isSocketSubscribed: true,
+      _subscribedSocketId: socket.id,
+      _socketListeners: listeners,
+      _boundSocket: socket,
+    });
   },
 
   sendTypingStart: (receiverId) => {
     const socket = useAuthStore.getState().socket;
-    if (socket && receiverId) socket.emit('typing:start', { receiverId: String(receiverId) });
+    if (socket && receiverId) socket.emit('typing:start', { receiverId: toIdString(receiverId) });
   },
 
   sendTypingStop: (receiverId) => {
     const socket = useAuthStore.getState().socket;
-    if (socket && receiverId) socket.emit('typing:stop', { receiverId: String(receiverId) });
+    if (socket && receiverId) socket.emit('typing:stop', { receiverId: toIdString(receiverId) });
   },
 
   unsubscribeFromMessages: () => {
-    const socket = useAuthStore.getState().socket;
-    if (!socket) return;
-    socket.off('newMessage');
-    socket.off('messageEdited');
-    socket.off('messageDeleted');
-    socket.off('messagePinned');
-    socket.off('messageReaction');
-    socket.off('profileUpdated');
-    socket.off('typing:start');
-    socket.off('typing:stop');
-    socket.off('messagesRead');
+    const { _boundSocket, _socketListeners } = get();
+    if (_boundSocket && _socketListeners) {
+      for (const [event, fn] of Object.entries(_socketListeners)) {
+        _boundSocket.off(event, fn);
+      }
+    }
+    set({
+      _isSocketSubscribed: false,
+      _subscribedSocketId: null,
+      _socketListeners: null,
+      _boundSocket: null,
+    });
   },
 }));

@@ -19,6 +19,8 @@ class AttachmentValidationError extends Error {}
 
 const serializeMessage = (message, userId) => {
   const serialized = typeof message.toObject === 'function' ? message.toObject() : { ...message };
+  if (serialized.senderId) serialized.senderId = serialized.senderId.toString();
+  if (serialized.receiverId) serialized.receiverId = serialized.receiverId.toString();
   serialized.isStarred = Array.isArray(message.starredBy) && message.starredBy.some((id) => id.toString() === userId.toString());
   delete serialized.starredBy;
   if (Array.isArray(serialized.reactions)) {
@@ -826,13 +828,40 @@ export const sendMessage = async (req, res) => {
     if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({ message: 'You cannot message yourself.' });
     }
-    const isConnectedOrPrevious = await werePreviouslyConnected(senderId, receiverId);
+
+    const [senderUser, receiverUser, acceptedRequest] = await Promise.all([
+      User.findById(senderId).select('contacts hiddenContacts').lean(),
+      User.findById(receiverId).select('contacts hiddenContacts').lean(),
+      ContactRequest.findOne({
+        $or: [
+          { sender: senderId, recipient: receiverId },
+          { sender: receiverId, recipient: senderId },
+        ],
+        status: 'accepted',
+      }).select('_id').lean(),
+    ]);
+
+    if (!senderUser || !receiverUser) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const senderHasHiddenReceiver = Boolean(
+      senderUser.hiddenContacts?.some((id) => id.toString() === receiverId.toString())
+    );
+    const receiverHasHiddenSender = Boolean(
+      receiverUser.hiddenContacts?.some((id) => id.toString() === senderId.toString())
+    );
+    const hasMutualContacts = Boolean(
+      senderUser.contacts?.some((id) => id.toString() === receiverId.toString()) ||
+      receiverUser.contacts?.some((id) => id.toString() === senderId.toString())
+    );
+    const isConnectedOrPrevious = Boolean(
+      acceptedRequest || hasMutualContacts || senderHasHiddenReceiver || receiverHasHiddenSender
+    );
+
     if (!isConnectedOrPrevious) {
       return res.status(403).json({ message: 'You can only message contacts. Add each other by email first.' });
     }
-
-    const receiverHasHiddenSender = Boolean(await User.exists({ _id: receiverId, hiddenContacts: senderId }));
-    const senderHasHiddenReceiver = Boolean(await User.exists({ _id: senderId, hiddenContacts: receiverId }));
 
     // A message is a request IF AND ONLY IF the receiver has hidden/removed the sender!
     const isMessageRequest = receiverHasHiddenSender;

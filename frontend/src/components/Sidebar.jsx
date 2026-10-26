@@ -63,39 +63,6 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => {
-    if (!socket) return undefined;
-    const refreshContacts = () => {
-      useChatStore.getState().fetchUsers();
-      useChatStore.getState().fetchContactRequests();
-      useChatStore.getState().fetchMessageRequests();
-    };
-    socket.on('contactsUpdated', refreshContacts);
-    const handleNewMessage = (message) => {
-      useChatStore.getState().handleIncomingMessage(message);
-    };
-    const handleMessagesRead = ({ senderId }) => {
-      useChatStore.getState().handleMessagesRead(senderId);
-    };
-    const handleNotification = ({ type, name }) => {
-      const messages = {
-        contactRequest: 'New contact request from {name}',
-        messageRequest: 'New message request from {name}',
-        contactAccepted: '{name} accepted your contact request',
-      };
-      if (messages[type]) toast(t(messages[type], { name }));
-    };
-    socket.on('newMessage', handleNewMessage);
-    socket.on('messagesRead', handleMessagesRead);
-    socket.on('notification', handleNotification);
-    return () => {
-      socket.off('contactsUpdated', refreshContacts);
-      socket.off('newMessage', handleNewMessage);
-      socket.off('messagesRead', handleMessagesRead);
-      socket.off('notification', handleNotification);
-    };
-  }, [socket]);
-
-  useEffect(() => {
     if (!openChatMenu) return undefined;
     const closeMenu = (event) => {
       if (!chatMenuRef.current?.contains(event.target)) setOpenChatMenu(null);
@@ -114,7 +81,6 @@ export default function Sidebar() {
   const handleSelectUser = (user) => {
     setOpenChatMenu(null);
     selectUser(user);
-    fetchMessages(user._id);
   };
 
   const handleSearchContact = async (event) => {
