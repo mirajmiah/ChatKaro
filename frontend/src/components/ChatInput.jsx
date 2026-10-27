@@ -24,6 +24,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const shouldRefocusAfterSend = useRef(false);
+  const isSendingRef = useRef(false);
   const mediaRecorderRef = useRef(null);
   const audioStreamRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -129,7 +130,9 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      if (!isSending && !isSendingRef.current) {
+        handleSubmit();
+      }
     }
   };
 
@@ -155,15 +158,17 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   };
 
   const handleSubmit = async () => {
+    if (isSendingRef.current || isSending) return;
     const trimmed = text.trim();
     if (!trimmed && !attachment) return;
     if (!selectedUser) return;
 
+    isSendingRef.current = true;
+    setIsSending(true);
     setShowEmojiPicker(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTypingStop(selectedUser._id);
 
-    setIsSending(true);
     try {
       await sendMessage(selectedUser._id, {
         text: trimmed || undefined,
@@ -188,6 +193,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     } catch {
       // Error toast handled by store
     } finally {
+      isSendingRef.current = false;
       shouldRefocusAfterSend.current = true;
       setIsSending(false);
     }

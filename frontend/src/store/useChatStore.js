@@ -17,6 +17,25 @@ const sortByLatestMessage = (users) => users.sort((first, second) => (
   - new Date(first.latestMessage?.createdAt || 0).getTime()
 ));
 
+const dedupeMessages = (list) => {
+  if (!Array.isArray(list)) return [];
+  const seenIds = new Set();
+  const result = [];
+  for (const msg of list) {
+    if (!msg) continue;
+    const id = toIdString(msg._id);
+    if (!id) {
+      result.push(msg);
+      continue;
+    }
+    if (!seenIds.has(id)) {
+      seenIds.add(id);
+      result.push(msg);
+    }
+  }
+  return result;
+};
+
 export const useChatStore = create((set, get) => ({
   users: [],
   contactRequests: [],
@@ -193,12 +212,12 @@ fetchUsers: async () => {
           return {};
         }
         // Preserve any messages already received via socket that are not yet in server response
-        const serverIds = new Set(serverMessages.map((m) => m._id));
+        const serverIds = new Set(serverMessages.map((m) => toIdString(m._id)));
         const pendingSocketMessages = state.messages.filter(
-          (m) => m._id && !serverIds.has(m._id) && !String(m._id).startsWith('temp-')
+          (m) => m._id && !serverIds.has(toIdString(m._id)) && !String(m._id).startsWith('temp-')
         );
         return {
-          messages: [...serverMessages, ...pendingSocketMessages],
+          messages: dedupeMessages([...serverMessages, ...pendingSocketMessages]),
         };
       });
     } catch (err) {
@@ -247,16 +266,35 @@ fetchUsers: async () => {
     }
 
     set((state) => {
-      const exists = state.messages.some((item) => item._id === message._id);
+      const msgId = toIdString(message._id);
+      const exists = state.messages.some((item) => toIdString(item._id) === msgId);
 
       // Instantly append to open conversation
       let updatedMessages = state.messages;
       if (isConversationOpen) {
-        if (!exists) {
+        // If message is from current user, check if we have a matching optimistic message to replace
+        const tempIndex = !exists && !isIncoming
+          ? state.messages.findIndex(
+              (m) =>
+                (m.isOptimistic || String(m._id).startsWith('temp-')) &&
+                toIdString(m.senderId) === currentUserId &&
+                toIdString(m.receiverId) === receiverId &&
+                m.text === message.text
+            )
+          : -1;
+
+        if (tempIndex !== -1) {
+          // Replace optimistic message in place with server confirmed socket message
+          updatedMessages = state.messages.map((m, idx) => (idx === tempIndex ? message : m));
+        } else if (!exists) {
           updatedMessages = [...state.messages, message];
         } else {
-          updatedMessages = state.messages.map((item) => item._id === message._id ? message : item);
+          updatedMessages = state.messages.map((item) =>
+            toIdString(item._id) === msgId ? message : item
+          );
         }
+
+        updatedMessages = dedupeMessages(updatedMessages);
       }
 
       // Check if contact already exists in sidebar
@@ -353,11 +391,27 @@ fetchUsers: async () => {
       const res = await api.post(`/messages/send/${targetId}`, data, { timeout: 120000 });
       set((state) => {
         const confirmed = res.data;
-        const messages = tempId
-          ? state.messages.map((m) => (m._id === tempId ? confirmed : m))
-          : state.messages.some((m) => m._id === confirmed._id)
-          ? state.messages
-          : [...state.messages, confirmed];
+        const confirmedId = toIdString(confirmed._id);
+
+        // Check if confirmed message already exists in state (e.g. delivered via socket)
+        const alreadyExists = state.messages.some(
+          (m) => toIdString(m._id) === confirmedId
+        );
+
+        let messages;
+        if (alreadyExists) {
+          // If socket already added or replaced it, simply drop the temp message if still present
+          messages = tempId
+            ? state.messages.filter((m) => m._id !== tempId)
+            : state.messages;
+        } else if (tempId && state.messages.some((m) => m._id === tempId)) {
+          // Replace temp message with confirmed message
+          messages = state.messages.map((m) => (m._id === tempId ? confirmed : m));
+        } else {
+          messages = [...state.messages, confirmed];
+        }
+
+        messages = dedupeMessages(messages);
 
         const users = sortByLatestMessage(
           state.users.map((user) =>
@@ -471,10 +525,12 @@ fetchUsers: async () => {
   },
 
   addMessage: (message) => {
+    if (!message || !message._id) return;
     set((state) => {
-      const exists = state.messages.some((m) => m._id === message._id);
+      const msgId = toIdString(message._id);
+      const exists = state.messages.some((m) => toIdString(m._id) === msgId);
       if (exists) return {};
-      return { messages: [...state.messages, message] };
+      return { messages: dedupeMessages([...state.messages, message]) };
     });
   },
 
