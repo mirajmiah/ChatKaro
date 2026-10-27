@@ -21,6 +21,10 @@ const serializeMessage = (message, userId) => {
   const serialized = typeof message.toObject === 'function' ? message.toObject() : { ...message };
   if (serialized.senderId) serialized.senderId = serialized.senderId.toString();
   if (serialized.receiverId) serialized.receiverId = serialized.receiverId.toString();
+  if (serialized.replyTo && typeof serialized.replyTo === 'object') {
+    if (serialized.replyTo._id) serialized.replyTo._id = serialized.replyTo._id.toString();
+    if (serialized.replyTo.senderId) serialized.replyTo.senderId = serialized.replyTo.senderId.toString();
+  }
   serialized.isStarred = Array.isArray(message.starredBy) && message.starredBy.some((id) => id.toString() === userId.toString());
   delete serialized.starredBy;
   if (Array.isArray(serialized.reactions)) {
@@ -761,6 +765,95 @@ export const getMessageDocument = async (req, res) => {
   }
 };
 
+export const downloadMessageMedia = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { type } = req.query; // 'image' | 'video' | 'audio' | 'document'
+
+    if (!mongoose.isValidObjectId(messageId)) {
+      return res.status(400).json({ message: 'Invalid media request.' });
+    }
+
+    const message = await Message.findOne({
+      _id: messageId,
+      $or: [
+        { senderId: req.user._id },
+        { receiverId: req.user._id },
+      ],
+      deletedAt: { $exists: false },
+      deletedFor: { $ne: req.user._id },
+    }).select('image video audio document documentName createdAt');
+
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found.' });
+    }
+
+    let mediaUrl;
+    let fileName;
+    let defaultContentType = 'application/octet-stream';
+
+    const dateStr = new Date(message.createdAt || Date.now()).toISOString().slice(0, 10);
+    const shortId = message._id.toString().slice(-6);
+
+    if (type === 'video' || (!type && message.video)) {
+      mediaUrl = message.video;
+      fileName = `talksy_video_${dateStr}_${shortId}.mp4`;
+      defaultContentType = 'video/mp4';
+    } else if (type === 'image' || (!type && message.image)) {
+      mediaUrl = message.image;
+      fileName = `talksy_image_${dateStr}_${shortId}.jpg`;
+      defaultContentType = 'image/jpeg';
+    } else if (type === 'audio' || (!type && message.audio)) {
+      mediaUrl = message.audio;
+      fileName = `talksy_voice_${dateStr}_${shortId}.webm`;
+      defaultContentType = 'audio/webm';
+    } else if (type === 'document' || (!type && message.document)) {
+      mediaUrl = message.document;
+      fileName = message.documentName || `talksy_doc_${dateStr}_${shortId}`;
+      defaultContentType = 'application/octet-stream';
+    }
+
+    if (!mediaUrl) {
+      return res.status(404).json({ message: 'No downloadable media found for this message.' });
+    }
+
+    const parsedUrl = new URL(mediaUrl);
+    if (parsedUrl.protocol !== 'https:' || !parsedUrl.hostname.includes('cloudinary.com')) {
+      return res.status(502).json({ message: 'Unexpected media storage host.' });
+    }
+
+    const remoteResponse = await fetch(parsedUrl, { redirect: 'error' });
+    if (!remoteResponse.ok || !remoteResponse.body) {
+      return res.status(502).json({ message: 'Unable to retrieve media from storage.' });
+    }
+
+    const cleanFileName = fileName.replace(/[\\/:*?"<>|\r\n]/g, '_') || 'attachment';
+    const asciiFileName = cleanFileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+    const contentType = remoteResponse.headers.get('content-type') || defaultContentType;
+
+    res.set({
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(cleanFileName)}`,
+      'Cache-Control': 'private, no-cache',
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    if (remoteResponse.headers.has('content-length')) {
+      res.set('Content-Length', remoteResponse.headers.get('content-length'));
+    }
+
+    Readable.fromWeb(remoteResponse.body)
+      .on('error', (err) => {
+        console.error('downloadMessageMedia stream error:', err.message);
+        res.destroy(err);
+      })
+      .pipe(res);
+  } catch (error) {
+    console.error('downloadMessageMedia error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
 export const markMessagesRead = async (req, res) => {
   try {
     const myId = req.user._id;
@@ -890,7 +983,7 @@ export const sendMessage = async (req, res) => {
     }
 
     let replyTarget;
-    if (replyTo) {
+    if (replyTo && mongoose.isValidObjectId(replyTo)) {
       replyTarget = await Message.findOne({
         _id: replyTo,
         deletedAt: { $exists: false },
@@ -900,7 +993,6 @@ export const sendMessage = async (req, res) => {
           { senderId: receiverId, receiverId: senderId },
         ],
       });
-      if (!replyTarget) return res.status(400).json({ message: 'Reply target is not available.' });
     }
 
     let imageUrl;

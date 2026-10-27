@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { FileText, Paperclip, Send, Smile, X, Mic, Trash2 } from 'lucide-react';
+import { FileText, Paperclip, Send, Smile, X, Mic, Trash2, Play, Video, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -380,17 +380,60 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
       )}
 
       {replyTarget && (
-        <div className="mb-3 flex items-center gap-3 rounded-lg border-l-4 border-primary bg-base-100 px-3 py-2">
+        <div className="mb-3 flex items-center gap-3 rounded-xl border-l-4 border-primary bg-base-100 p-2.5 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-150">
+          {/* Media thumbnail if replying to photo or video */}
+          {replyTarget.image && !replyTarget.deletedAt ? (
+            <img
+              src={replyTarget.image}
+              alt={t('Quoted photo')}
+              className="h-11 w-11 shrink-0 rounded-lg object-cover border border-base-300 shadow-xs"
+            />
+          ) : replyTarget.video && !replyTarget.deletedAt ? (
+            <div className="relative h-11 w-11 shrink-0 rounded-lg bg-neutral flex items-center justify-center text-white overflow-hidden shadow-xs">
+              <video src={replyTarget.video} className="h-full w-full object-cover opacity-60" />
+              <Play size={16} className="absolute fill-white" />
+            </div>
+          ) : replyTarget.audio && !replyTarget.deletedAt ? (
+            <div className="h-11 w-11 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+              <Mic size={18} />
+            </div>
+          ) : replyTarget.document && !replyTarget.deletedAt ? (
+            <div className="h-11 w-11 shrink-0 rounded-lg bg-base-200 text-base-content flex items-center justify-center border border-base-300">
+              <FileText size={18} />
+            </div>
+          ) : null}
+
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-primary">
-              {t('Replying to {name}', { name: String(replyTarget.senderId) === String(authUser?._id) ? t('yourself') : selectedUser.fullName })}
+              {t('Replying to {name}', {
+                name: String(replyTarget.senderId?._id || replyTarget.senderId) === String(authUser?._id)
+                  ? t('yourself')
+                  : (selectedUser?.fullName || t('Contact')),
+              })}
             </p>
-            <p className="truncate text-sm text-base-content/70">
-              {replyTarget.deletedAt ? t('Message deleted') : replyTarget.text || replyTarget.documentName || (replyTarget.image ? t('Photo') : replyTarget.video ? t('Video') : t('Attachment'))}
+            <p className="truncate text-xs text-base-content/80 mt-0.5">
+              {replyTarget.deletedAt ? (
+                <span className="italic opacity-60">{t('Message deleted')}</span>
+              ) : (
+                <>
+                  {replyTarget.image && <span className="font-medium text-primary mr-1">📷 {t('Photo')}</span>}
+                  {replyTarget.video && <span className="font-medium text-primary mr-1">🎥 {t('Video')}</span>}
+                  {replyTarget.audio && <span className="font-medium text-primary mr-1">🎤 {t('Voice note')}</span>}
+                  {replyTarget.documentName && <span className="font-medium text-primary mr-1">📄 {replyTarget.documentName}</span>}
+                  {replyTarget.text && <span>{replyTarget.text}</span>}
+                </>
+              )}
             </p>
           </div>
-          <button type="button" onClick={onCancelReply} className="btn btn-ghost btn-xs btn-circle" aria-label={t('Cancel reply')}>
-            <X size={14} />
+
+          <button
+            type="button"
+            onClick={onCancelReply}
+            className="btn btn-ghost btn-xs btn-circle shrink-0"
+            aria-label={t('Cancel reply')}
+            title={t('Cancel reply')}
+          >
+            <X size={15} />
           </button>
         </div>
       )}

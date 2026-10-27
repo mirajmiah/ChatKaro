@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatMsgTime } from '../lib/utils.js';
 import toast from 'react-hot-toast';
+import api from '../lib/axios.js';
 import {
   Check,
   CheckSquare,
@@ -16,12 +17,18 @@ import {
   X,
   Circle,
   CheckCircle2,
+  Download,
+  Play,
+  FileText,
+  Mic,
+  Camera,
+  Video,
 } from 'lucide-react';
-import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
 import DocumentLink from './DocumentLink.jsx';
 import AudioPlayer from './AudioPlayer.jsx';
 import Avatar from './Avatar.jsx';
+import { useTranslation } from '../lib/i18n.js';
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+|(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,}(?::\d+)?(?:[/?#][^\s<]*)?/gi;
 
@@ -57,8 +64,6 @@ function renderLinkedText(text) {
   return parts;
 }
 
-
-
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 export default function MessageBubble({
@@ -79,6 +84,7 @@ export default function MessageBubble({
   onStartSelection,
   isSameSenderAsPrev = false,
   isSameSenderAsNext = false,
+  isHighlighted = false,
 }) {
   const { language, t } = useTranslation();
   const isMine = String(message.senderId) === String(authUser?._id);
@@ -87,12 +93,14 @@ export default function MessageBubble({
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(message.text || '');
   const [isBusy, setIsBusy] = useState(false);
+  const [downloadingType, setDownloadingType] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showForwardPicker, setShowForwardPicker] = useState(false);
   const [showPinDurationPicker, setShowPinDurationPicker] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
   const bubbleRef = useRef(null);
   const menuRef = useRef(null);
+
   const canEdit = isMine && !message.deletedAt && Boolean(message.text) &&
     Date.now() - new Date(message.createdAt).getTime() <= 15 * 60 * 1000;
   const canDelete = isMine && !message.deletedAt &&
@@ -130,14 +138,70 @@ export default function MessageBubble({
   const otherUser = users.find((user) => String(user._id) === String(isMine ? message.receiverId : message.senderId));
   const avatar = isMine ? authUser?.profilePic : otherUser?.profilePic;
   const name = isMine ? authUser?.fullName : otherUser?.fullName;
+
+  const replySenderUser = users.find((u) => String(u._id) === String(message.replyTo?.senderId));
   const replySender = message.replyTo?.senderId
-    ? (String(message.replyTo.senderId) === String(authUser?._id) ? t('You') : t('Contact'))
+    ? (String(message.replyTo.senderId) === String(authUser?._id)
+        ? t('You')
+        : (replySenderUser?.fullName || otherUser?.fullName || t('Contact')))
     : t('Message');
+
   const isPinned = Boolean(
     message.pinnedAt &&
     (!message.pinnedUntil || new Date(message.pinnedUntil).getTime() > Date.now())
   );
   const closeMenu = () => setMenuOpen(false);
+
+  const handleDownloadMedia = async (type = 'image', event) => {
+    if (event) event.stopPropagation();
+    const mediaUrl = type === 'image' ? message.image : message.video;
+    if (!mediaUrl || downloadingType) return;
+
+    setDownloadingType(type);
+    const toastId = toast.loading(t(`Downloading ${type}...`));
+
+    try {
+      // 1. Client-side blob fetch
+      const res = await fetch(mediaUrl, { mode: 'cors' });
+      if (!res.ok) throw new Error('CORS or network error');
+      const blob = await res.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      const ext = type === 'image' ? (mediaUrl.split('.').pop()?.split(/[?#]/)[0] || 'jpg') : 'mp4';
+      link.download = `talksy_${type}_${message._id}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+      toast.success(t(`${type === 'image' ? 'Image' : 'Video'} downloaded`), { id: toastId });
+    } catch {
+      // 2. Fallback to authenticated backend proxy endpoint
+      try {
+        const proxyRes = await api.get(`/messages/${message._id}/download?type=${type}`, {
+          responseType: 'blob',
+        });
+        const blob = new Blob([proxyRes.data]);
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        const ext = type === 'image' ? 'jpg' : 'mp4';
+        link.download = `talksy_${type}_${message._id}.${ext}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(objectUrl);
+        toast.success(t(`${type === 'image' ? 'Image' : 'Video'} downloaded`), { id: toastId });
+      } catch (proxyErr) {
+        console.error('Download error:', proxyErr);
+        // Fallback: open rawUrl in new tab
+        window.open(mediaUrl, '_blank');
+        toast.error(t('Unable to download automatically. Opened media in new tab.'), { id: toastId });
+      }
+    } finally {
+      setDownloadingType(null);
+    }
+  };
 
   const setPinDuration = async (durationDays) => {
     setIsBusy(true);
@@ -233,7 +297,7 @@ export default function MessageBubble({
     <div
       id={`message-${message._id}`}
       onClick={selectionMode ? onToggleSelection : undefined}
-      className={`chat ${isMine ? 'chat-end' : 'chat-start'} px-4 relative transition-all duration-150 ${
+      className={`group chat ${isMine ? 'chat-end' : 'chat-start'} px-4 relative transition-all duration-200 ${
         isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'
       } ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg bg-primary/10' : ''}`}
     >
@@ -250,6 +314,29 @@ export default function MessageBubble({
           {isSelected ? <CheckCircle2 size={21} /> : <Circle size={21} />}
         </button>
       )}
+
+      {/* Quick reply hover button for desktop */}
+      {!selectionMode && !message.deletedAt && onReply && (
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10 ${
+            isMine ? 'left-2 -translate-x-full' : 'right-2 translate-x-full'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReply(message);
+            }}
+            className="btn btn-circle btn-xs bg-base-100 hover:bg-base-200 text-base-content border border-base-300 shadow-md transition-transform hover:scale-110 active:scale-95"
+            title={t('Reply')}
+            aria-label={t('Reply')}
+          >
+            <Reply size={13} />
+          </button>
+        </div>
+      )}
+
       {/* Avatar — only render on the last message of consecutive group */}
       <div className="chat-image h-8 w-8 shrink-0 overflow-hidden rounded-full self-end flex items-center justify-center">
         {isSameSenderAsNext ? (
@@ -298,10 +385,12 @@ export default function MessageBubble({
           }
           toggleMenu(event);
         }}
-        className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words shadow-sm ${
+        className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words shadow-sm transition-all duration-300 ${
           isMine
             ? `chat-bubble-primary text-primary-content ${isSameSenderAsPrev ? 'rounded-tr-md' : ''} ${isSameSenderAsNext ? 'rounded-br-md' : ''}`
             : `bg-base-300 text-base-content ${isSameSenderAsPrev ? 'rounded-tl-md' : ''} ${isSameSenderAsNext ? 'rounded-bl-md' : ''}`
+        } ${
+          isHighlighted ? 'ring-4 ring-primary ring-offset-2 ring-offset-base-100 shadow-xl scale-[1.02]' : ''
         }`}
       >
         {menuOpen && createPortal(
@@ -345,6 +434,20 @@ export default function MessageBubble({
                 </li>
                 <li><button onClick={() => window.alert(t('Message sent {time}{edited}.', { time: formatMsgTime(message.createdAt, language), edited: message.editedAt ? t(' and edited') : '' }))}><Info size={17} /> {t('Message info')}</button></li>
                 <li><button onClick={() => { onReply(message); closeMenu(); }}><Reply size={17} /> {t('Reply')}</button></li>
+                {message.image && (
+                  <li>
+                    <button onClick={(e) => { handleDownloadMedia('image', e); closeMenu(); }}>
+                      <Download size={17} /> {t('Download image')}
+                    </button>
+                  </li>
+                )}
+                {message.video && (
+                  <li>
+                    <button onClick={(e) => { handleDownloadMedia('video', e); closeMenu(); }}>
+                      <Download size={17} /> {t('Download video')}
+                    </button>
+                  </li>
+                )}
                 <li><button onClick={async () => { if (!message.text) return; await navigator.clipboard.writeText(message.text); toast.success(t('Message copied')); }}><Copy size={17} /> {t('Copy')}</button></li>
                 <li><button onClick={() => { setShowForwardPicker(true); closeMenu(); }}><Forward size={17} /> {t('Forward')}</button></li>
                 <li>
@@ -393,6 +496,7 @@ export default function MessageBubble({
           document.body
         )}
 
+        {/* Quoted Reply Banner */}
         {!message.deletedAt && message.replyTo && (
           <button
             type="button"
@@ -400,12 +504,46 @@ export default function MessageBubble({
               event.stopPropagation();
               if (message.replyTo._id) jumpToMessage(message.replyTo._id);
             }}
-            className="mb-2 block w-full rounded border-l-2 border-primary bg-base-100/20 px-2 py-1 text-left text-xs"
+            className="mb-2.5 flex items-center justify-between gap-2.5 w-full rounded-lg border-l-4 border-primary bg-black/10 dark:bg-white/10 p-2 text-left text-xs transition-colors hover:bg-black/15 dark:hover:bg-white/15 cursor-pointer"
           >
-            <span className="block font-semibold opacity-80">{replySender}</span>
-            <span className="block truncate opacity-70">
-              {message.replyTo.deletedAt ? t('Message deleted') : message.replyTo.text || message.replyTo.documentName || (message.replyTo.image ? t('Photo') : message.replyTo.video ? t('Video') : message.replyTo.audio ? `🎤 ${t('Voice message')}` : t('Attachment'))}
-            </span>
+            <div className="min-w-0 flex-1">
+              <span className="block font-semibold opacity-90 text-[11px] text-primary">{replySender}</span>
+              <span className="block truncate opacity-75 text-[11px]">
+                {message.replyTo.deletedAt
+                  ? t('Message deleted')
+                  : message.replyTo.text ||
+                    message.replyTo.documentName ||
+                    (message.replyTo.image
+                      ? `📷 ${t('Photo')}`
+                      : message.replyTo.video
+                      ? `🎥 ${t('Video')}`
+                      : message.replyTo.audio
+                      ? `🎤 ${t('Voice message')}`
+                      : t('Attachment'))}
+              </span>
+            </div>
+            {message.replyTo.image && (
+              <img
+                src={message.replyTo.image}
+                alt={t('Quoted photo')}
+                className="w-10 h-10 rounded-md object-cover shrink-0 border border-base-content/10 shadow-xs"
+              />
+            )}
+            {message.replyTo.video && (
+              <div className="w-10 h-10 rounded-md bg-black/40 flex items-center justify-center shrink-0 border border-base-content/10 shadow-xs">
+                <Play size={14} className="text-white fill-white" />
+              </div>
+            )}
+            {message.replyTo.audio && (
+              <div className="w-10 h-10 rounded-md bg-primary/20 flex items-center justify-center shrink-0 text-primary">
+                <Mic size={15} />
+              </div>
+            )}
+            {message.replyTo.document && (
+              <div className="w-10 h-10 rounded-md bg-base-100/50 flex items-center justify-center shrink-0 text-base-content/70">
+                <FileText size={15} />
+              </div>
+            )}
           </button>
         )}
 
@@ -430,7 +568,7 @@ export default function MessageBubble({
 
         {/* Image */}
         {!message.deletedAt && message.image && (
-          <>
+          <div className="relative group/media mt-1.5 rounded-xl overflow-hidden border border-black/10 dark:border-white/10 shadow-sm max-w-[260px] sm:max-w-[300px]">
             <img
               src={message.image}
               alt={t('Sent image')}
@@ -438,46 +576,141 @@ export default function MessageBubble({
                 event.stopPropagation();
                 setImgExpanded(true);
               }}
-              className={`rounded-lg cursor-pointer object-cover mt-1 ${
-                message.text ? 'mt-2' : ''
-              } max-w-[240px] max-h-[240px] hover:opacity-90 transition-opacity`}
+              className="w-full max-h-[280px] object-cover cursor-pointer transition-transform duration-200 group-hover/media:scale-[1.02]"
+              loading="lazy"
             />
-            {/* Lightbox */}
+            {/* Quick Action Overlay on Image */}
+            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/75 via-black/35 to-transparent flex items-center justify-between opacity-95 transition-opacity duration-150">
+              <span className="text-[11px] text-white/90 font-medium px-1 flex items-center gap-1">
+                <Camera size={12} /> {t('Photo')}
+              </span>
+              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => onReply(message)}
+                  className="btn btn-circle btn-xs bg-black/60 hover:bg-black/90 text-white border-none shadow transition-transform hover:scale-110 active:scale-95"
+                  title={t('Reply to this image')}
+                  aria-label={t('Reply to this image')}
+                >
+                  <Reply size={13} />
+                </button>
+                <button
+                  type="button"
+                  disabled={downloadingType === 'image'}
+                  onClick={(e) => handleDownloadMedia('image', e)}
+                  className="btn btn-circle btn-xs bg-black/60 hover:bg-black/90 text-white border-none shadow transition-transform hover:scale-110 active:scale-95"
+                  title={t('Download image')}
+                  aria-label={t('Download image')}
+                >
+                  <Download size={13} />
+                </button>
+              </div>
+            </div>
+
+            {/* Full size Lightbox Modal with Reply & Download */}
             {imgExpanded && (
               <dialog
-                className="modal modal-open"
+                className="modal modal-open z-[1200]"
                 onClick={() => setImgExpanded(false)}
               >
-                <div className="modal-box max-w-3xl bg-transparent shadow-none p-0" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="modal-box max-w-4xl bg-neutral text-neutral-content p-4 rounded-2xl flex flex-col items-center gap-3 shadow-2xl border border-white/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Lightbox Toolbar */}
+                  <div className="w-full flex items-center justify-between pb-2 border-b border-white/10">
+                    <span className="text-sm font-medium text-white/80">
+                      {t('Photo')} · {formatMsgTime(message.createdAt, language)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onReply(message);
+                          setImgExpanded(false);
+                        }}
+                        className="btn btn-sm btn-outline text-white hover:bg-white/20 border-white/30 gap-1.5"
+                      >
+                        <Reply size={15} />
+                        <span>{t('Reply')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={downloadingType === 'image'}
+                        onClick={(e) => handleDownloadMedia('image', e)}
+                        className="btn btn-sm btn-primary gap-1.5"
+                      >
+                        <Download size={15} />
+                        <span>{t('Download')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-circle btn-ghost text-white hover:bg-white/20"
+                        onClick={() => setImgExpanded(false)}
+                        aria-label={t('Close')}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+
                   <img
                     src={message.image}
                     alt={t('Full size')}
-                    className="w-full rounded-xl object-contain max-h-[80vh]"
+                    className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-md"
                   />
-                  <button
-                    className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 bg-base-200"
-                    onClick={() => setImgExpanded(false)}
-                    aria-label={t('Close')}
-                  >
-                    ✕
-                  </button>
                 </div>
-                <form method="dialog" className="modal-backdrop" onClick={() => setImgExpanded(false)}>
+                <form method="dialog" className="modal-backdrop bg-black/75" onClick={() => setImgExpanded(false)}>
                   <button>{t('Close')}</button>
                 </form>
               </dialog>
             )}
-          </>
+          </div>
         )}
 
+        {/* Video */}
         {!message.deletedAt && message.video && (
-          <video
-            src={message.video}
-            controls
-            onClick={(event) => event.stopPropagation()}
-            className="mt-2 max-w-[280px] rounded-lg"
-          />
+          <div className="mt-2 max-w-[280px] sm:max-w-[320px] rounded-xl overflow-hidden border border-black/10 dark:border-white/10 bg-black/30 shadow-sm">
+            <video
+              src={message.video}
+              controls
+              preload="metadata"
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-h-[300px] rounded-t-xl bg-black"
+            />
+            {/* Video toolbar with Reply & Download */}
+            <div
+              className="flex items-center justify-between px-2.5 py-1.5 bg-black/50 text-white backdrop-blur-xs text-xs"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span className="flex items-center gap-1.5 opacity-85 text-[11px] font-medium">
+                <Video size={13} /> {t('Video')}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onReply(message)}
+                  className="btn btn-ghost btn-xs text-white hover:bg-white/20 gap-1 px-2 h-7 min-h-0"
+                  title={t('Reply to this video')}
+                >
+                  <Reply size={13} />
+                  <span>{t('Reply')}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={downloadingType === 'video'}
+                  onClick={(e) => handleDownloadMedia('video', e)}
+                  className="btn btn-ghost btn-xs text-white hover:bg-white/20 gap-1 px-2 h-7 min-h-0"
+                  title={t('Download video')}
+                >
+                  <Download size={13} />
+                  <span>{t('Download')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
+
         {!message.deletedAt && message.audio && (
           <div className="mt-2">
             <AudioPlayer

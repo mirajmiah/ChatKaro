@@ -13,6 +13,7 @@ import {
   restoreContact,
   getMessages,
   getMessageDocument,
+  downloadMessageMedia,
   markMessagesRead,
   deleteChat,
   sendMessage,
@@ -43,6 +44,7 @@ router.delete('/contacts/:userId', protectRoute, removeContact);
 // Use a distinct path for clearing a conversation so it cannot be mistaken for a message ID.
 router.delete('/clear-chat/:userId', protectRoute, deleteChat);
 router.get('/:messageId/document', protectRoute, getMessageDocument);
+router.get('/:messageId/download', protectRoute, downloadMessageMedia);
 router.get('/:userId', protectRoute, getMessages);
 router.patch('/:userId/read', protectRoute, markMessagesRead);
 router.delete('/:messageId', protectRoute, deleteMessage);

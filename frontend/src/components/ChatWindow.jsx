@@ -30,6 +30,7 @@ export default function ChatWindow() {
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [showDeleteOptions, setShowDeleteOptions] = useState(false);
   const [pinClock, setPinClock] = useState(Date.now());
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const previousMessageCount = useRef(0);
 
   const isOtherUserTyping = Boolean(selectedUser && typingUsers[String(selectedUser._id)]);
@@ -127,12 +128,20 @@ export default function ChatWindow() {
   };
 
   const jumpToMessage = (messageId) => {
+    const id = String(messageId);
+    setHighlightedMessageId(id);
     window.requestAnimationFrame(() => {
-      document.getElementById(`message-${messageId}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
+      const el = document.getElementById(`message-${id}`);
+      if (el) {
+        el.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
     });
+    window.setTimeout(() => {
+      setHighlightedMessageId((curr) => (curr === id ? null : curr));
+    }, 2500);
   };
 
   if (!selectedUser) {
@@ -276,6 +285,7 @@ export default function ChatWindow() {
                 onStartSelection={() => setSelectedMessageIds([msg._id])}
                 isSameSenderAsPrev={isSameSenderAsPrev}
                 isSameSenderAsNext={isSameSenderAsNext}
+                isHighlighted={highlightedMessageId === String(msg._id)}
               />
             );
           })
