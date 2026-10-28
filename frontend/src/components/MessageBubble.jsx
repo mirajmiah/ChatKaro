@@ -98,8 +98,13 @@ export default function MessageBubble({
   const [showForwardPicker, setShowForwardPicker] = useState(false);
   const [showPinDurationPicker, setShowPinDurationPicker] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
   const bubbleRef = useRef(null);
   const menuRef = useRef(null);
+  const touchStartRef = useRef({ x: 0, y: 0, isHorizontal: null });
+  const hasVibratedRef = useRef(false);
+  const didSwipeRef = useRef(false);
 
   const canEdit = isMine && !message.deletedAt && Boolean(message.text) &&
     Date.now() - new Date(message.createdAt).getTime() <= 15 * 60 * 1000;
@@ -278,9 +283,88 @@ export default function MessageBubble({
     };
   }, [menuOpen]);
 
+  const handleTouchStart = (e) => {
+    if (selectionMode || message.deletedAt || !onReply) return;
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      isHorizontal: null,
+    };
+    hasVibratedRef.current = false;
+    setIsSwiping(false);
+  };
+
+  const handleTouchMove = (e) => {
+    if (selectionMode || message.deletedAt || !onReply) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    if (touchStartRef.current.isHorizontal === null) {
+      if (Math.abs(deltaY) > 6 && Math.abs(deltaY) >= Math.abs(deltaX)) {
+        touchStartRef.current.isHorizontal = false;
+        return;
+      }
+      if (Math.abs(deltaX) > 6 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        touchStartRef.current.isHorizontal = true;
+      }
+    }
+
+    if (!touchStartRef.current.isHorizontal) return;
+
+    setIsSwiping(true);
+    didSwipeRef.current = true;
+
+    // Apply smooth elastic resistance (up to ~75px)
+    const dampedDistance = Math.min(Math.abs(deltaX) * 0.65, 75);
+    const offset = Math.sign(deltaX) * dampedDistance;
+    setSwipeOffset(offset);
+
+    // Haptic vibration feedback when threshold is reached
+    if (Math.abs(offset) >= 42 && !hasVibratedRef.current) {
+      hasVibratedRef.current = true;
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        try {
+          navigator.vibrate(20);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isSwiping) {
+      if (Math.abs(swipeOffset) >= 42) {
+        onReply(message);
+      }
+      setTimeout(() => {
+        didSwipeRef.current = false;
+      }, 200);
+    }
+
+    setIsSwiping(false);
+    setSwipeOffset(0);
+    touchStartRef.current = { x: 0, y: 0, isHorizontal: null };
+  };
+
+  const handleTouchCancel = () => {
+    setIsSwiping(false);
+    setSwipeOffset(0);
+    touchStartRef.current = { x: 0, y: 0, isHorizontal: null };
+    setTimeout(() => {
+      didSwipeRef.current = false;
+    }, 200);
+  };
+
   const toggleMenu = (event) => {
     if (selectionMode) {
       onToggleSelection();
+      return;
+    }
+    if (didSwipeRef.current) {
+      didSwipeRef.current = false;
       return;
     }
     if (isEditing) return;
@@ -370,6 +454,10 @@ export default function MessageBubble({
       {/* Bubble */}
       <div
         ref={bubbleRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         onClick={(event) => {
           if (selectionMode) {
             event.stopPropagation();
@@ -386,7 +474,12 @@ export default function MessageBubble({
           }
           toggleMenu(event);
         }}
-        className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words shadow-sm transition-all duration-300 ${
+        style={{
+          transform: `translateX(${swipeOffset}px)`,
+          transition: isSwiping ? 'none' : 'transform 260ms cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+          touchAction: 'pan-y',
+        }}
+        className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words shadow-sm transition-[box-shadow,background-color,border-color] duration-200 select-none ${
           isMine
             ? `chat-bubble-primary text-primary-content ${isSameSenderAsPrev ? 'rounded-tr-md' : ''} ${isSameSenderAsNext ? 'rounded-br-md' : ''}`
             : `bg-base-300 text-base-content ${isSameSenderAsPrev ? 'rounded-tl-md' : ''} ${isSameSenderAsNext ? 'rounded-bl-md' : ''}`
@@ -394,6 +487,41 @@ export default function MessageBubble({
           isHighlighted ? 'ring-4 ring-primary ring-offset-2 ring-offset-base-100 shadow-xl scale-[1.02]' : ''
         }`}
       >
+        {/* Swipe-to-reply indicator for left-to-right swipe (like WhatsApp screenshot) */}
+        {swipeOffset > 6 && (
+          <div
+            style={{
+              opacity: Math.min((swipeOffset - 6) / 30, 1),
+              transform: `translateY(-50%) scale(${Math.min((swipeOffset - 6) / 32, 1.1)})`,
+            }}
+            className={`absolute -left-10 top-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors pointer-events-none shadow-md ${
+              swipeOffset >= 42
+                ? 'bg-primary text-primary-content ring-2 ring-primary/40'
+                : 'bg-base-100 text-base-content/80 border border-base-300'
+            }`}
+            aria-hidden="true"
+          >
+            <Reply size={15} />
+          </div>
+        )}
+
+        {/* Swipe-to-reply indicator for right-to-left swipe (as explicitly requested) */}
+        {swipeOffset < -6 && (
+          <div
+            style={{
+              opacity: Math.min((-swipeOffset - 6) / 30, 1),
+              transform: `translateY(-50%) scale(${Math.min((-swipeOffset - 6) / 32, 1.1)})`,
+            }}
+            className={`absolute -right-10 top-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors pointer-events-none shadow-md ${
+              swipeOffset <= -42
+                ? 'bg-primary text-primary-content ring-2 ring-primary/40'
+                : 'bg-base-100 text-base-content/80 border border-base-300'
+            }`}
+            aria-hidden="true"
+          >
+            <Reply size={15} />
+          </div>
+        )}
         {menuOpen && createPortal(
           <>
             {/* Full-screen backdrop to capture taps/clicks anywhere outside */}
