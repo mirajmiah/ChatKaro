@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
+import User from '../models/user.model.js';
 
 // userId -> active socket ids
 const onlineUsers = new Map();
@@ -78,7 +79,12 @@ export const initSocket = (httpServer) => {
       activeSockets.delete(socket.id);
       if (activeSockets.size === 0) {
         onlineUsers.delete(uid);
+        const lastSeenDate = new Date();
         io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+        io.emit('userOffline', { userId: uid, lastSeen: lastSeenDate.toISOString() });
+        User.findByIdAndUpdate(uid, { lastSeen: lastSeenDate }).exec().catch((err) => {
+          console.error('Failed to update user lastSeen on disconnect:', err.message);
+        });
       }
     });
   });

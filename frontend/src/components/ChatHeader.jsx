@@ -5,11 +5,12 @@ import { useAuthStore } from '../store/useAuthStore.js';
 import ChatDetailsModal from './ChatDetailsModal.jsx';
 import Avatar from './Avatar.jsx';
 import { useTranslation } from '../lib/i18n.js';
+import { formatLastSeenDetailed } from '../lib/utils.js';
 
 export default function ChatHeader({ messages, onJumpToMessage }) {
   const { selectedUser, selectUser, typingUsers } = useChatStore();
   const { onlineUsers } = useAuthStore();
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
 
   if (!selectedUser) return null;
@@ -51,8 +52,8 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
               </span>
             </p>
           ) : (
-            <p className={`text-xs ${isOnline ? 'text-success' : 'text-base-content/50'}`}>
-              {t(isOnline ? 'Online' : 'Offline')}
+            <p className={`text-xs truncate ${isOnline ? 'text-success font-medium' : 'text-base-content/60'}`}>
+              {isOnline ? t('Online') : formatLastSeenDetailed(selectedUser.lastSeen, language, t)}
             </p>
           )}
         </div>

@@ -669,6 +669,19 @@ fetchUsers: async () => {
       if (messages[type]) toast(translateCurrent(messages[type], { name }));
     };
 
+    const onUserOffline = ({ userId, lastSeen }) => {
+      const uId = toIdString(userId);
+      set((state) => ({
+        users: state.users.map((user) =>
+          toIdString(user._id) === uId ? { ...user, lastSeen } : user
+        ),
+        selectedUser:
+          toIdString(state.selectedUser?._id) === uId
+            ? { ...state.selectedUser, lastSeen }
+            : state.selectedUser,
+      }));
+    };
+
     const listeners = {
       newMessage: onNewMessage,
       messageEdited: onMessageEdited,
@@ -682,6 +695,7 @@ fetchUsers: async () => {
       contactsUpdated: onContactsUpdated,
       connect: onConnect,
       notification: onNotification,
+      userOffline: onUserOffline,
     };
 
     for (const [event, fn] of Object.entries(listeners)) {

@@ -5,6 +5,7 @@ import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from './ImageViewer.jsx';
 import DocumentLink from './DocumentLink.jsx';
 import Avatar from './Avatar.jsx';
+import { formatLastSeenDetailed } from '../lib/utils.js';
 
 const TABS = [
   { id: 'media', label: 'Media' },
@@ -80,7 +81,9 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
             className={user.profilePic ? 'cursor-zoom-in' : ''}
           />
           <h2 className="mt-3 text-xl font-bold">{user.fullName}</h2>
-          <p className={`text-sm ${isOnline ? 'text-success' : 'text-base-content/50'}`}>{t(isOnline ? 'Online' : 'Offline')}</p>
+          <p className={`text-sm ${isOnline ? 'text-success font-medium' : 'text-base-content/60'}`}>
+            {isOnline ? t('Online') : formatLastSeenDetailed(user.lastSeen, language, t)}
+          </p>
           {user.email && <p className="mt-1 text-sm text-base-content/60">{user.email}</p>}
           {user.bio && (
             <p className="mt-3 max-w-lg whitespace-pre-wrap text-center text-sm leading-relaxed text-base-content/70">
