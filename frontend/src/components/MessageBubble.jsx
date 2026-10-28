@@ -112,6 +112,9 @@ export default function MessageBubble({
   const canDelete = isMine && !message.deletedAt &&
     Date.now() - new Date(message.createdAt).getTime() <= 4 * 60 * 60 * 1000;
 
+  const hasMedia = Boolean((message.image || message.video) && !message.deletedAt);
+  const isMediaOnly = hasMedia && !message.text && !message.replyTo;
+
   const reactionGroups = (message.reactions || []).reduce((acc, curr) => {
     if (!curr.emoji) return acc;
     if (!acc[curr.emoji]) {
@@ -481,6 +484,12 @@ export default function MessageBubble({
           touchAction: 'pan-y',
         }}
         className={`chat-bubble relative max-w-xs sm:max-w-sm md:max-w-md break-words shadow-sm transition-[box-shadow,background-color,border-color] duration-200 select-none ${
+          isMediaOnly
+            ? '!p-1 !min-h-0 !min-w-0'
+            : hasMedia
+            ? '!p-1.5 !min-h-0'
+            : ''
+        } ${
           isMine
             ? `chat-bubble-primary text-primary-content ${isSameSenderAsPrev ? 'rounded-tr-md' : ''} ${isSameSenderAsNext ? 'rounded-br-md' : ''}`
             : `bg-base-300 text-base-content ${isSameSenderAsPrev ? 'rounded-tl-md' : ''} ${isSameSenderAsNext ? 'rounded-bl-md' : ''}`
@@ -710,22 +719,25 @@ export default function MessageBubble({
           <p className="mb-1 flex items-center gap-1 text-xs opacity-60"><Pin size={12} /> {t('Pinned')}</p>
         )}
 
-        {message.deletedAt ? (
-          <p className="italic opacity-70">{t('Message deleted')}</p>
-        ) : isEditing ? (
-          <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-            <input value={editedText} onChange={(event) => setEditedText(event.target.value)} className="input input-sm input-bordered w-full text-base-content" autoFocus />
-            <button disabled={isBusy || !editedText.trim()} onClick={async () => { setIsBusy(true); try { await editMessage(message._id, editedText); setIsEditing(false); } finally { setIsBusy(false); } }} className="btn btn-success btn-xs btn-square" aria-label={t('Save edit')}><Check size={14} /></button>
-            <button disabled={isBusy} onClick={() => setIsEditing(false)} className="btn btn-ghost btn-xs btn-square" aria-label={t('Cancel edit')}><X size={14} /></button>
-          </div>
-        ) : (
-          message.text && <p className="leading-relaxed whitespace-pre-wrap">{renderLinkedText(message.text)}{message.editedAt && <span className="ml-1 text-xs opacity-60">{t('(edited)')}</span>}</p>
+        {/* Text for text-only messages */}
+        {!hasMedia && (
+          message.deletedAt ? (
+            <p className="italic opacity-70">{t('Message deleted')}</p>
+          ) : isEditing ? (
+            <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+              <input value={editedText} onChange={(event) => setEditedText(event.target.value)} className="input input-sm input-bordered w-full text-base-content" autoFocus />
+              <button disabled={isBusy || !editedText.trim()} onClick={async () => { setIsBusy(true); try { await editMessage(message._id, editedText); setIsEditing(false); } finally { setIsBusy(false); } }} className="btn btn-success btn-xs btn-square" aria-label={t('Save edit')}><Check size={14} /></button>
+              <button disabled={isBusy} onClick={() => setIsEditing(false)} className="btn btn-ghost btn-xs btn-square" aria-label={t('Cancel edit')}><X size={14} /></button>
+            </div>
+          ) : (
+            message.text && <p className="leading-relaxed whitespace-pre-wrap">{renderLinkedText(message.text)}{message.editedAt && <span className="ml-1 text-xs opacity-60">{t('(edited)')}</span>}</p>
+          )
         )}
 
         {/* Image */}
         {!message.deletedAt && message.image && (
           <>
-            <div className={`mt-1.5 rounded-xl overflow-hidden cursor-pointer max-w-[260px] sm:max-w-[320px] ${message.text ? 'mt-2' : ''}`}>
+            <div className="rounded-[14px] overflow-hidden cursor-pointer max-w-[280px] sm:max-w-[320px]">
               <img
                 src={message.image}
                 alt={t('Sent image')}
@@ -733,7 +745,7 @@ export default function MessageBubble({
                   event.stopPropagation();
                   setImgExpanded(true);
                 }}
-                className="w-full max-h-[320px] object-cover rounded-xl hover:opacity-95 transition-opacity duration-150 shadow-xs"
+                className="w-full max-h-[360px] object-cover rounded-[14px] hover:opacity-95 transition-opacity duration-150 shadow-xs block"
                 loading="lazy"
               />
             </div>
@@ -755,45 +767,35 @@ export default function MessageBubble({
 
         {/* Video */}
         {!message.deletedAt && message.video && (
-          <div className="mt-2 max-w-[280px] sm:max-w-[320px] rounded-xl overflow-hidden border border-black/10 dark:border-white/10 bg-black/30 shadow-sm">
+          <div className="rounded-[14px] overflow-hidden max-w-[280px] sm:max-w-[320px] bg-black shadow-xs">
             <video
               src={message.video}
               controls
               preload="metadata"
               onClick={(event) => event.stopPropagation()}
-              className="w-full max-h-[300px] rounded-t-xl bg-black"
+              className="w-full max-h-[360px] rounded-[14px] object-cover bg-black block"
             />
-            {/* Video toolbar with Reply & Download */}
-            <div
-              className="flex items-center justify-between px-2.5 py-1.5 bg-black/50 text-white backdrop-blur-xs text-xs"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <span className="flex items-center gap-1.5 opacity-85 text-[11px] font-medium">
-                <Video size={13} /> {t('Video')}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onReply(message)}
-                  className="btn btn-ghost btn-xs text-white hover:bg-white/20 gap-1 px-2 h-7 min-h-0"
-                  title={t('Reply to this video')}
-                >
-                  <Reply size={13} />
-                  <span>{t('Reply')}</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={downloadingType === 'video'}
-                  onClick={(e) => handleDownloadMedia('video', e)}
-                  className="btn btn-ghost btn-xs text-white hover:bg-white/20 gap-1 px-2 h-7 min-h-0"
-                  title={t('Download video')}
-                >
-                  <Download size={13} />
-                  <span>{t('Download')}</span>
-                </button>
-              </div>
-            </div>
           </div>
+        )}
+
+        {/* Caption text for media messages */}
+        {hasMedia && (
+          message.deletedAt ? (
+            <p className="italic opacity-70 px-2 py-1">{t('Message deleted')}</p>
+          ) : isEditing ? (
+            <div className="flex items-center gap-2 px-1 pt-1.5 pb-0.5" onClick={(event) => event.stopPropagation()}>
+              <input value={editedText} onChange={(event) => setEditedText(event.target.value)} className="input input-sm input-bordered w-full text-base-content" autoFocus />
+              <button disabled={isBusy || !editedText.trim()} onClick={async () => { setIsBusy(true); try { await editMessage(message._id, editedText); setIsEditing(false); } finally { setIsBusy(false); } }} className="btn btn-success btn-xs btn-square" aria-label={t('Save edit')}><Check size={14} /></button>
+              <button disabled={isBusy} onClick={() => setIsEditing(false)} className="btn btn-ghost btn-xs btn-square" aria-label={t('Cancel edit')}><X size={14} /></button>
+            </div>
+          ) : (
+            message.text && (
+              <p className="leading-relaxed whitespace-pre-wrap px-2 pt-1.5 pb-0.5 text-sm">
+                {renderLinkedText(message.text)}
+                {message.editedAt && <span className="ml-1 text-xs opacity-60">{t('(edited)')}</span>}
+              </p>
+            )
+          )
         )}
 
         {!message.deletedAt && message.audio && (
