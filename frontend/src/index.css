@@ -117,37 +117,6 @@
     }
   }
 
-  .brand-logo {
-    transition: filter 180ms ease;
-  }
-
-  html[data-theme='light'] .brand-logo,
-  html[data-theme='dark'] .brand-logo,
-  html[data-theme='dracula'] .brand-logo {
-    filter: hue-rotate(60deg);
-  }
-
-  html[data-theme='cupcake'] .brand-logo,
-  html[data-theme='aqua'] .brand-logo {
-    filter: hue-rotate(-20deg);
-  }
-
-  html[data-theme='forest'] .brand-logo {
-    filter: hue-rotate(-65deg);
-  }
-
-  html[data-theme='cyberpunk'] .brand-logo {
-    filter: hue-rotate(120deg);
-  }
-
-  html[data-theme='retro'] .brand-logo {
-    filter: hue-rotate(155deg);
-  }
-
-  html[data-theme='luxury'] .brand-logo {
-    filter: saturate(0) brightness(1.25);
-  }
-
   /* Suppress native textarea scrollbars on mobile and desktop */
   .chat-input-textarea::-webkit-scrollbar {
     display: none !important;

@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
+import Logo from './Logo.jsx';
 
 export default function Navbar() {
   const { authUser, logout } = useAuthStore();
@@ -51,7 +52,7 @@ export default function Navbar() {
     <nav className="navbar app-navbar sticky top-0 z-50 border-b border-base-300 bg-base-200 px-3 sm:px-4">
       <div className="flex-1">
         <Link to="/" className="group flex items-center gap-2" aria-label={t('ChatKaro Home')}>
-          <img src="/chatkaro-logo.png" alt="" className="brand-logo h-8 w-8 object-contain transition-transform group-hover:scale-105" />
+          <Logo className="h-8 w-8 transition-transform group-hover:scale-105" />
           <span className="text-base font-bold tracking-tight sm:text-lg">ChatKaro</span>
         </Link>
       </div>

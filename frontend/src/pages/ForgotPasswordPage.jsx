@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import api from '../lib/axios.js';
 import { useTranslation } from '../lib/i18n.js';
+import Logo from '../components/Logo.jsx';
 
 function SupportIllustration() {
   const { t } = useTranslation();
@@ -105,7 +106,7 @@ export default function ForgotPasswordPage() {
     <main className="auth-page-transition grid min-h-screen min-h-[100dvh] flex-1 bg-white text-[#171717] lg:grid-cols-2">
       <section className="relative flex min-h-[100dvh] flex-col px-6 py-7 sm:px-12 lg:px-16 xl:px-20">
         <Link to="/" className="flex w-fit items-center gap-2.5 text-[#27202f]" aria-label={t('ChatKaro home')}>
-          <img src="/chatkaro-logo.png" alt="" className="brand-logo h-8 w-8 object-contain" />
+          <Logo className="h-8 w-8" />
           <span className="text-lg font-bold tracking-tight">ChatKaro</span>
         </Link>
 
