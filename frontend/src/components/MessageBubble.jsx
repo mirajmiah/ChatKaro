@@ -723,104 +723,33 @@ export default function MessageBubble({
 
         {/* Image */}
         {!message.deletedAt && message.image && (
-          <div className="relative group/media mt-1.5 rounded-xl overflow-hidden border border-black/10 dark:border-white/10 shadow-sm max-w-[260px] sm:max-w-[300px]">
-            <img
-              src={message.image}
-              alt={t('Sent image')}
-              onClick={(event) => {
-                event.stopPropagation();
-                setImgExpanded(true);
-              }}
-              className="w-full max-h-[280px] object-cover cursor-pointer transition-transform duration-200 group-hover/media:scale-[1.02]"
-              loading="lazy"
-            />
-            {/* Quick Action Overlay on Image */}
-            <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/75 via-black/35 to-transparent flex items-center justify-between opacity-95 transition-opacity duration-150">
-              <span className="text-[11px] text-white/90 font-medium px-1 flex items-center gap-1">
-                <Camera size={12} /> {t('Photo')}
-              </span>
-              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={() => onReply(message)}
-                  className="btn btn-circle btn-xs bg-black/60 hover:bg-black/90 text-white border-none shadow transition-transform hover:scale-110 active:scale-95"
-                  title={t('Reply to this image')}
-                  aria-label={t('Reply to this image')}
-                >
-                  <Reply size={13} />
-                </button>
-                <button
-                  type="button"
-                  disabled={downloadingType === 'image'}
-                  onClick={(e) => handleDownloadMedia('image', e)}
-                  className="btn btn-circle btn-xs bg-black/60 hover:bg-black/90 text-white border-none shadow transition-transform hover:scale-110 active:scale-95"
-                  title={t('Download image')}
-                  aria-label={t('Download image')}
-                >
-                  <Download size={13} />
-                </button>
-              </div>
+          <>
+            <div className={`mt-1.5 rounded-xl overflow-hidden cursor-pointer max-w-[260px] sm:max-w-[320px] ${message.text ? 'mt-2' : ''}`}>
+              <img
+                src={message.image}
+                alt={t('Sent image')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setImgExpanded(true);
+                }}
+                className="w-full max-h-[320px] object-cover rounded-xl hover:opacity-95 transition-opacity duration-150 shadow-xs"
+                loading="lazy"
+              />
             </div>
 
-            {/* Full size Lightbox Modal with Reply & Download */}
             {imgExpanded && (
-              <dialog
-                className="modal modal-open z-[1200]"
-                onClick={() => setImgExpanded(false)}
-              >
-                <div
-                  className="modal-box max-w-4xl bg-neutral text-neutral-content p-4 rounded-2xl flex flex-col items-center gap-3 shadow-2xl border border-white/10"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Lightbox Toolbar */}
-                  <div className="w-full flex items-center justify-between pb-2 border-b border-white/10">
-                    <span className="text-sm font-medium text-white/80">
-                      {t('Photo')} · {formatMsgTime(message.createdAt, language)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onReply(message);
-                          setImgExpanded(false);
-                        }}
-                        className="btn btn-sm btn-outline text-white hover:bg-white/20 border-white/30 gap-1.5"
-                      >
-                        <Reply size={15} />
-                        <span>{t('Reply')}</span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={downloadingType === 'image'}
-                        onClick={(e) => handleDownloadMedia('image', e)}
-                        className="btn btn-sm btn-primary gap-1.5"
-                      >
-                        <Download size={15} />
-                        <span>{t('Download')}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-circle btn-ghost text-white hover:bg-white/20"
-                        onClick={() => setImgExpanded(false)}
-                        aria-label={t('Close')}
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <img
-                    src={message.image}
-                    alt={t('Full size')}
-                    className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-md"
-                  />
-                </div>
-                <form method="dialog" className="modal-backdrop bg-black/75" onClick={() => setImgExpanded(false)}>
-                  <button>{t('Close')}</button>
-                </form>
-              </dialog>
+              <ImageViewer
+                src={message.image}
+                alt={t('Sent image')}
+                title={name || t('Photo')}
+                timestamp={formatMsgTime(message.createdAt, language)}
+                onReply={() => onReply(message)}
+                onDownload={(e) => handleDownloadMedia('image', e)}
+                closeLabel={t('Close image')}
+                onClose={() => setImgExpanded(false)}
+              />
             )}
-          </div>
+          </>
         )}
 
         {/* Video */}
