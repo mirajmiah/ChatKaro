@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore.js';
+import { useChatStore } from './store/useChatStore.js';
 import { useSettingsStore } from './store/useSettingsStore.js';
 import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -26,6 +27,7 @@ export default function App() {
 
   useEffect(() => {
     checkAuth();
+    useChatStore.getState().initOfflineQueue();
   }, []);
 
   useEffect(() => {

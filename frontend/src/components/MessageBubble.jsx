@@ -23,6 +23,7 @@ import {
   Mic,
   Camera,
   Video,
+  Clock,
 } from 'lucide-react';
 import ImageViewer from './ImageViewer.jsx';
 import DocumentLink from './DocumentLink.jsx';
@@ -912,9 +913,19 @@ export default function MessageBubble({
           ) : (
             <span
               className="inline-flex items-center ml-0.5 select-none"
-              title={message.read ? t('Read') : message.delivered ? t('Delivered') : t('Sent')}
+              title={
+                message.isPending || message.status === 'pending' || String(message._id).startsWith('pending-') || String(message._id).startsWith('temp-')
+                  ? t('Waiting to send...')
+                  : message.read
+                  ? t('Read')
+                  : message.delivered
+                  ? t('Delivered')
+                  : t('Sent')
+              }
             >
-              {message.read ? (
+              {message.isPending || message.status === 'pending' || String(message._id).startsWith('pending-') || String(message._id).startsWith('temp-') ? (
+                <Clock size={12} className="opacity-80 text-base-content/70" />
+              ) : message.read ? (
                 <span className="flex items-center text-primary font-bold">
                   <Check size={13} className="-mr-1.5" strokeWidth={2.5} />
                   <Check size={13} strokeWidth={2.5} />

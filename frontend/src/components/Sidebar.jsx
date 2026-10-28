@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, MessageSquare, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { Check, Clock, MessageSquare, MoreVertical, Search, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
@@ -503,8 +503,9 @@ export default function Sidebar() {
                         </span>
                       </p>
                     ) : (
-                      <p className={`truncate text-xs ${latestMessage ? 'text-base-content/60' : isOnline ? 'text-success' : 'text-base-content/40'}`}>
-                        {latestMessage ? `${messagePrefix}${messagePreview}` : t(isOnline ? 'Online' : 'Offline')}
+                      <p className={`truncate text-xs flex items-center gap-1 ${latestMessage ? 'text-base-content/60' : isOnline ? 'text-success' : 'text-base-content/40'}`}>
+                        {latestMessage?.isPending && <Clock size={11} className="opacity-70 shrink-0" />}
+                        <span className="truncate">{latestMessage ? `${messagePrefix}${messagePreview}` : t(isOnline ? 'Online' : 'Offline')}</span>
                       </p>
                     )}
                     {user.unreadCount > 0 && (
