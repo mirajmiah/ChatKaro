@@ -227,10 +227,7 @@ export default function MessageBubble({
     if (!menuOpen) return undefined;
 
     const dismissMenu = (event) => {
-      if (
-        bubbleRef.current?.contains(event.target) ||
-        menuRef.current?.contains(event.target)
-      ) {
+      if (menuRef.current?.contains(event.target)) {
         return;
       }
       setMenuOpen(false);
@@ -240,9 +237,13 @@ export default function MessageBubble({
     };
 
     document.addEventListener('pointerdown', dismissMenu);
+    document.addEventListener('click', dismissMenu);
+    document.addEventListener('touchstart', dismissMenu);
     document.addEventListener('keydown', dismissOnEscape);
     return () => {
       document.removeEventListener('pointerdown', dismissMenu);
+      document.removeEventListener('click', dismissMenu);
+      document.removeEventListener('touchstart', dismissMenu);
       document.removeEventListener('keydown', dismissOnEscape);
     };
   }, [menuOpen]);
@@ -394,19 +395,44 @@ export default function MessageBubble({
         }`}
       >
         {menuOpen && createPortal(
-          <ul
-            ref={menuRef}
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              position: 'fixed',
-              top: menuPosition?.top ?? 8,
-              left: menuPosition?.left ?? 8,
-              maxHeight: 'calc(100vh - 16px)',
-              overflowY: 'auto',
-              zIndex: 1000,
-            }}
-            className="menu menu-sm w-56 max-w-[calc(100vw-1rem)] rounded-2xl border border-base-300 bg-base-100 p-2 text-base-content shadow-2xl backdrop-blur-md"
-          >
+          <>
+            {/* Full-screen backdrop to capture taps/clicks anywhere outside */}
+            <div
+              className="fixed inset-0 z-[999] bg-transparent cursor-default select-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                closeMenu();
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                closeMenu();
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeMenu();
+              }}
+              aria-hidden="true"
+            />
+            <ul
+              ref={menuRef}
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+              onTouchStart={(event) => event.stopPropagation()}
+              style={{
+                position: 'fixed',
+                top: menuPosition?.top ?? 8,
+                left: menuPosition?.left ?? 8,
+                maxHeight: 'calc(100vh - 16px)',
+                overflowY: 'auto',
+                zIndex: 1000,
+              }}
+              className="menu menu-sm w-56 max-w-[calc(100vw-1rem)] rounded-2xl border border-base-300 bg-base-100 p-2 text-base-content shadow-2xl backdrop-blur-md"
+            >
               {!message.deletedAt && <>
                 <li className="p-1 mb-1.5 border-b border-base-300/80">
                   <div className="flex items-center justify-between gap-1 w-full p-0.5 hover:bg-transparent">
@@ -432,7 +458,7 @@ export default function MessageBubble({
                     })}
                   </div>
                 </li>
-                <li><button onClick={() => window.alert(t('Message sent {time}{edited}.', { time: formatMsgTime(message.createdAt, language), edited: message.editedAt ? t(' and edited') : '' }))}><Info size={17} /> {t('Message info')}</button></li>
+                <li><button onClick={() => { closeMenu(); window.alert(t('Message sent {time}{edited}.', { time: formatMsgTime(message.createdAt, language), edited: message.editedAt ? t(' and edited') : '' })); }}><Info size={17} /> {t('Message info')}</button></li>
                 <li><button onClick={() => { onReply(message); closeMenu(); }}><Reply size={17} /> {t('Reply')}</button></li>
                 {message.image && (
                   <li>
@@ -448,7 +474,7 @@ export default function MessageBubble({
                     </button>
                   </li>
                 )}
-                <li><button onClick={async () => { if (!message.text) return; await navigator.clipboard.writeText(message.text); toast.success(t('Message copied')); }}><Copy size={17} /> {t('Copy')}</button></li>
+                <li><button onClick={async () => { if (!message.text) return; await navigator.clipboard.writeText(message.text); toast.success(t('Message copied')); closeMenu(); }}><Copy size={17} /> {t('Copy')}</button></li>
                 <li><button onClick={() => { setShowForwardPicker(true); closeMenu(); }}><Forward size={17} /> {t('Forward')}</button></li>
                 <li>
                   <button
@@ -492,9 +518,10 @@ export default function MessageBubble({
               </>}
               <li><button onClick={async () => { if (!window.confirm(t('Delete this message for you?'))) return; setIsBusy(true); try { await deleteMessage(message._id, 'me'); setMenuOpen(false); } finally { setIsBusy(false); } }}><Trash2 size={17} /> {t('Delete for me')}</button></li>
               {!message.deletedAt && canDelete && <li><button className="text-error hover:bg-error/10" onClick={async () => { if (!window.confirm(t('Delete this message for everyone?'))) return; setIsBusy(true); try { await deleteMessage(message._id, 'everyone'); setMenuOpen(false); } finally { setIsBusy(false); } }}><Trash2 size={17} /> {t('Delete for everyone')}</button></li>}
-          </ul>,
-          document.body
-        )}
+          </ul>
+        </>,
+        document.body
+      )}
 
         {/* Quoted Reply Banner */}
         {!message.deletedAt && message.replyTo && (
