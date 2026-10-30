@@ -916,7 +916,7 @@ export default function MessageBubble({
             <span
               className="inline-flex items-center ml-0.5 select-none"
               title={
-                message.isPending || message.status === 'pending' || String(message._id).startsWith('pending-') || String(message._id).startsWith('temp-')
+                message.isPending || message.status === 'pending' || message.status === 'sending' || String(message._id).startsWith('pending-') || String(message._id).startsWith('temp-')
                   ? t('Waiting to send...')
                   : message.read
                   ? t('Read')
@@ -925,7 +925,7 @@ export default function MessageBubble({
                   : t('Sent')
               }
             >
-              {message.isPending || message.status === 'pending' || String(message._id).startsWith('pending-') || String(message._id).startsWith('temp-') ? (
+              {message.isPending || message.status === 'pending' || message.status === 'sending' || String(message._id).startsWith('pending-') || String(message._id).startsWith('temp-') ? (
                 <Clock size={12} className="opacity-80 text-base-content/70" />
               ) : message.read ? (
                 <span className="flex items-center text-primary font-bold">

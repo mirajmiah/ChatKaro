@@ -22,21 +22,43 @@ const sortByLatestMessage = (users) => users.sort((first, second) => (
   - new Date(first.latestMessage?.createdAt || 0).getTime()
 ));
 
+const inFlightSends = new Set();
+
 const dedupeMessages = (list) => {
   if (!Array.isArray(list)) return [];
   const seenIds = new Set();
+  const seenClientIds = new Set();
+  const seenSignatures = new Set();
   const result = [];
   for (const msg of list) {
     if (!msg) continue;
     const id = toIdString(msg._id);
-    if (!id) {
-      result.push(msg);
-      continue;
+    const clientId = msg.clientMessageId || msg.tempId;
+
+    if (id && seenIds.has(id)) continue;
+    if (clientId && seenClientIds.has(clientId)) continue;
+
+    // Dedupe rapid identical text/media sends within 2-second window
+    if (msg.senderId && msg.receiverId && (msg.text || msg.image || msg.video || msg.audio || msg.document)) {
+      const timeBucket = Math.floor(new Date(msg.createdAt || Date.now()).getTime() / 2000);
+      const signature = `${toIdString(msg.senderId)}_${toIdString(msg.receiverId)}_${msg.text || ''}_${timeBucket}`;
+      if (seenSignatures.has(signature)) {
+        // If an existing matching message is pending/optimistic and this one is confirmed, replace it
+        const existingIdx = result.findIndex((r) => {
+          const rBucket = Math.floor(new Date(r.createdAt || Date.now()).getTime() / 2000);
+          return `${toIdString(r.senderId)}_${toIdString(r.receiverId)}_${r.text || ''}_${rBucket}` === signature;
+        });
+        if (existingIdx !== -1 && (result[existingIdx].isPending || result[existingIdx].isOptimistic) && !msg.isPending && !msg.isOptimistic) {
+          result[existingIdx] = msg;
+        }
+        continue;
+      }
+      seenSignatures.add(signature);
     }
-    if (!seenIds.has(id)) {
-      seenIds.add(id);
-      result.push(msg);
-    }
+
+    if (id) seenIds.add(id);
+    if (clientId) seenClientIds.add(clientId);
+    result.push(msg);
   }
   return result;
 };
@@ -262,12 +284,21 @@ fetchUsers: async () => {
           break;
         }
 
+        // Never double-send a message that is actively in-flight
+        if (inFlightSends.has(item.tempId)) {
+          continue;
+        }
+
+        inFlightSends.add(item.tempId);
+
         try {
-          const res = await api.post(`/messages/send/${item.receiverId}`, item.data, { timeout: 120000 });
+          const payload = { ...item.data, clientMessageId: item.tempId };
+          const res = await api.post(`/messages/send/${item.receiverId}`, payload, { timeout: 120000 });
           const confirmed = res.data;
           const confirmedId = toIdString(confirmed._id);
 
           await removeOfflineMessage(item.tempId);
+          inFlightSends.delete(item.tempId);
 
           set((state) => {
             const alreadyExists = state.messages.some(
@@ -276,10 +307,10 @@ fetchUsers: async () => {
 
             let messages;
             if (alreadyExists) {
-              messages = state.messages.filter((m) => m._id !== item.tempId && m.tempId !== item.tempId);
+              messages = state.messages.filter((m) => m._id !== item.tempId && m.tempId !== item.tempId && m.clientMessageId !== item.tempId);
             } else {
               messages = state.messages.map((m) =>
-                (m._id === item.tempId || m.tempId === item.tempId) ? confirmed : m
+                (m._id === item.tempId || m.tempId === item.tempId || m.clientMessageId === item.tempId) ? confirmed : m
               );
             }
 
@@ -300,6 +331,7 @@ fetchUsers: async () => {
             };
           });
         } catch (err) {
+          inFlightSends.delete(item.tempId);
           const isNetworkError =
             !err.response ||
             err.code === 'ERR_NETWORK' ||
@@ -313,7 +345,7 @@ fetchUsers: async () => {
             console.error('Offline message rejected by server:', err.response?.data?.message || err.message);
             await removeOfflineMessage(item.tempId);
             set((state) => ({
-              messages: state.messages.filter((m) => m._id !== item.tempId && m.tempId !== item.tempId),
+              messages: state.messages.filter((m) => m._id !== item.tempId && m.tempId !== item.tempId && m.clientMessageId !== item.tempId),
               pendingQueue: state.pendingQueue.filter((p) => p.tempId !== item.tempId),
             }));
             toast.error(translateCurrent(err.response?.data?.message || 'Failed to send message'));
@@ -433,14 +465,17 @@ fetchUsers: async () => {
         const tempIndex = !exists && !isIncoming
           ? state.messages.findIndex(
               (m) =>
-                (m.isOptimistic || m.isPending || String(m._id).startsWith('pending-') || String(m._id).startsWith('temp-')) &&
+                // Match by unique clientMessageId if available
+                (message.clientMessageId && (m.clientMessageId === message.clientMessageId || m.tempId === message.clientMessageId || m._id === message.clientMessageId)) ||
+                // Fallback content and recipient matching
+                ((m.isOptimistic || m.isPending || String(m._id).startsWith('pending-') || String(m._id).startsWith('temp-')) &&
                 toIdString(m.senderId) === currentUserId &&
                 toIdString(m.receiverId) === receiverId &&
                 ((message.text && m.text === message.text) ||
                  (message.image && m.image) ||
                  (message.video && m.video) ||
                  (message.audio && m.audio) ||
-                 (message.document && m.document))
+                 (message.document && m.document)))
             )
           : -1;
 
@@ -529,10 +564,21 @@ fetchUsers: async () => {
     const currentUserId = toIdString(authUser?._id);
     const targetId = toIdString(receiverId);
 
-    const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const tempId = data.clientMessageId || `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const clientMessageId = tempId;
+
+    // Idempotency: if already in flight, do not duplicate
+    if (inFlightSends.has(clientMessageId)) {
+      return;
+    }
+    inFlightSends.add(clientMessageId);
+
+    const isCurrentlyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
     const tempMessage = {
       _id: tempId,
       tempId,
+      clientMessageId,
       senderId: currentUserId,
       receiverId: targetId,
       text: data.text,
@@ -542,65 +588,65 @@ fetchUsers: async () => {
       audioDuration: data.audioDuration,
       document: data.document,
       documentName: data.documentName,
-      replyTo: data.replyTo ? get().messages.find((m) => m._id === data.replyTo) : undefined,
+      replyTo: data.replyTo ? get().messages.find((m) => toIdString(m._id) === toIdString(data.replyTo)) : undefined,
       createdAt: new Date().toISOString(),
       delivered: false,
       read: false,
-      isPending: true,
+      isPending: !isCurrentlyOnline,
       isOptimistic: true,
-      status: 'pending',
+      status: isCurrentlyOnline ? 'sending' : 'pending',
     };
 
-    // 1. Instantly display in chat and update sidebar latest message
-    set((state) => ({
-      messages: [...state.messages, tempMessage],
-      users: sortByLatestMessage(
-        state.users.map((user) =>
-          toIdString(user._id) === targetId
-            ? { ...user, latestMessage: tempMessage }
-            : user
-        )
-      ),
-      pendingQueue: [...state.pendingQueue, { tempId, receiverId: targetId, data, createdAt: tempMessage.createdAt }],
-    }));
-
-    // 2. Persist to offline IndexedDB queue
-    await saveOfflineMessage({
-      tempId,
-      receiverId: targetId,
-      data,
-      createdAt: tempMessage.createdAt,
+    // 1. Instantly display in open chat and update sidebar
+    set((state) => {
+      const alreadyPresent = state.messages.some(
+        (m) => m._id === tempId || m.tempId === tempId || (m.clientMessageId && m.clientMessageId === clientMessageId)
+      );
+      if (alreadyPresent) return {};
+      return {
+        messages: dedupeMessages([...state.messages, tempMessage]),
+        users: sortByLatestMessage(
+          state.users.map((user) =>
+            toIdString(user._id) === targetId
+              ? { ...user, latestMessage: tempMessage }
+              : user
+          )
+        ),
+      };
     });
 
-    // 3. If offline, leave message in chat with clock icon 🕒 - will auto-send when back online!
-    const isCurrentlyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    // 2. If OFFLINE: persist to IndexedDB queue with clock icon 🕒
     if (!isCurrentlyOnline) {
+      inFlightSends.delete(clientMessageId);
+      set((state) => ({
+        pendingQueue: [...state.pendingQueue.filter((p) => p.tempId !== tempId), { tempId, receiverId: targetId, data: { ...data, clientMessageId }, createdAt: tempMessage.createdAt }],
+      }));
+      await saveOfflineMessage({
+        tempId,
+        receiverId: targetId,
+        data: { ...data, clientMessageId },
+        createdAt: tempMessage.createdAt,
+      });
       return tempMessage;
     }
 
-    // 4. If online, attempt to deliver immediately
+    // 3. If ONLINE: send immediately via HTTP with clientMessageId
     try {
-      const res = await api.post(`/messages/send/${targetId}`, data, { timeout: 120000 });
+      const res = await api.post(
+        `/messages/send/${targetId}`,
+        { ...data, clientMessageId },
+        { timeout: 120000 }
+      );
       const confirmed = res.data;
       const confirmedId = toIdString(confirmed._id);
 
-      await removeOfflineMessage(tempId);
+      inFlightSends.delete(clientMessageId);
+      removeOfflineMessage(tempId);
 
       set((state) => {
-        const alreadyExists = state.messages.some(
-          (m) => toIdString(m._id) === confirmedId
+        const messages = state.messages.map((m) =>
+          (m._id === tempId || m.tempId === tempId || m.clientMessageId === clientMessageId) ? confirmed : m
         );
-
-        let messages;
-        if (alreadyExists) {
-          messages = state.messages.filter((m) => m._id !== tempId && m.tempId !== tempId);
-        } else {
-          messages = state.messages.map((m) =>
-            (m._id === tempId || m.tempId === tempId) ? confirmed : m
-          );
-        }
-
-        messages = dedupeMessages(messages);
 
         const users = sortByLatestMessage(
           state.users.map((user) =>
@@ -611,13 +657,15 @@ fetchUsers: async () => {
         );
 
         return {
-          messages,
+          messages: dedupeMessages(messages),
           users,
           pendingQueue: state.pendingQueue.filter((p) => p.tempId !== tempId),
         };
       });
+
       return confirmed;
     } catch (err) {
+      inFlightSends.delete(clientMessageId);
       const isNetworkError =
         !err.response ||
         err.code === 'ERR_NETWORK' ||
@@ -625,15 +673,27 @@ fetchUsers: async () => {
         (typeof navigator !== 'undefined' && !navigator.onLine);
 
       if (isNetworkError) {
-        // Keep message in chat with clock icon 🕒! Preserved in offline queue for auto-sync.
-        console.warn('Network issue during send. Message preserved in offline queue.');
+        console.warn('Network issue during send. Queued message for auto-sync.');
+        const pendingMsg = { ...tempMessage, isPending: true, status: 'pending' };
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            (m._id === tempId || m.tempId === tempId || m.clientMessageId === clientMessageId) ? pendingMsg : m
+          ),
+          pendingQueue: [...state.pendingQueue.filter((p) => p.tempId !== tempId), { tempId, receiverId: targetId, data: { ...data, clientMessageId }, createdAt: tempMessage.createdAt }],
+        }));
+        await saveOfflineMessage({
+          tempId,
+          receiverId: targetId,
+          data: { ...data, clientMessageId },
+          createdAt: tempMessage.createdAt,
+        });
         return tempMessage;
       }
 
       // Permanent validation or authorization error
-      await removeOfflineMessage(tempId);
+      removeOfflineMessage(tempId);
       set((state) => ({
-        messages: state.messages.filter((m) => m._id !== tempId && m.tempId !== tempId),
+        messages: state.messages.filter((m) => m._id !== tempId && m.tempId !== tempId && m.clientMessageId !== clientMessageId),
         pendingQueue: state.pendingQueue.filter((p) => p.tempId !== tempId),
       }));
       toast.error(translateCurrent(err.response?.data?.message || 'Failed to send message'));

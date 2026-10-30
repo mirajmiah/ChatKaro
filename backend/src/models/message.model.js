@@ -36,6 +36,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       maxlength: 255,
     },
+    clientMessageId: {
+      type: String,
+      index: true,
+    },
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',
@@ -104,6 +108,8 @@ const messageSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+messageSchema.index({ senderId: 1, receiverId: 1, clientMessageId: 1 });
 
 const Message = mongoose.model('Message', messageSchema);
 

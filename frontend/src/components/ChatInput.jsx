@@ -130,9 +130,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isSending && !isSendingRef.current) {
-        handleSubmit();
-      }
+      handleSubmit();
     }
   };
 
@@ -158,44 +156,47 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   };
 
   const handleSubmit = async () => {
-    if (isSendingRef.current || isSending) return;
+    if (isSendingRef.current) return;
     const trimmed = text.trim();
     if (!trimmed && !attachment) return;
     if (!selectedUser) return;
 
+    // Debounce rapid multi-clicks or simultaneous enter+click
     isSendingRef.current = true;
-    setIsSending(true);
+    setTimeout(() => {
+      isSendingRef.current = false;
+    }, 250);
+
+    const payload = {
+      text: trimmed || undefined,
+      image: attachment?.type.startsWith('image/') ? attachment.data : undefined,
+      video: attachment?.type.startsWith('video/') ? attachment.data : undefined,
+      document: attachment && !attachment.type.startsWith('image/') && !attachment.type.startsWith('video/')
+        ? attachment.data
+        : undefined,
+      documentName: attachment && !attachment.type.startsWith('image/') && !attachment.type.startsWith('video/')
+        ? attachment.name
+        : undefined,
+      replyTo: replyTarget?._id,
+    };
+
+    // INSTANTLY reset input UI for immediate responsiveness (zero delay)
+    setText('');
+    setAttachment(null);
     setShowEmojiPicker(false);
+    onCancelReply();
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTypingStop(selectedUser._id);
 
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.overflowY = 'hidden';
+    }
+
     try {
-      await sendMessage(selectedUser._id, {
-        text: trimmed || undefined,
-        image: attachment?.type.startsWith('image/') ? attachment.data : undefined,
-        video: attachment?.type.startsWith('video/') ? attachment.data : undefined,
-        document: attachment && !attachment.type.startsWith('image/') && !attachment.type.startsWith('video/')
-          ? attachment.data
-          : undefined,
-        documentName: attachment && !attachment.type.startsWith('image/') && !attachment.type.startsWith('video/')
-          ? attachment.name
-          : undefined,
-        replyTo: replyTarget?._id,
-      });
-      setText('');
-      setAttachment(null);
-      onCancelReply();
-      // Reset textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-        textareaRef.current.style.overflowY = 'hidden';
-      }
+      await sendMessage(selectedUser._id, payload);
     } catch {
       // Error toast handled by store
-    } finally {
-      isSendingRef.current = false;
-      shouldRefocusAfterSend.current = true;
-      setIsSending(false);
     }
   };
 
@@ -344,7 +345,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     recorder.stop();
   };
 
-  const canSend = (text.trim().length > 0 || attachment !== null) && !isSending;
+  const canSend = text.trim().length > 0 || attachment !== null;
 
   return (
     <div className="chat-composer relative shrink-0 border-t border-base-300 bg-base-200/85 backdrop-blur-md px-3 py-3 sm:px-4">
@@ -550,7 +551,6 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
               rows={1}
               className="chat-input-textarea textarea textarea-bordered w-full resize-none overflow-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-base-100 focus:outline-none focus:border-primary transition-colors leading-relaxed pr-3"
               style={{ minHeight: '2.5rem', maxHeight: '7.5rem' }}
-              disabled={isSending}
             />
           </div>
 
@@ -573,7 +573,6 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
             <button
               type="button"
               onClick={startRecording}
-              disabled={isSending}
               className="btn btn-primary btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 transition-all shadow-sm hover:scale-105 active:scale-95"
               aria-label={t('Record voice note')}
               title={t('Record voice note')}

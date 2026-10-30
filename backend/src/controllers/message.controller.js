@@ -966,7 +966,34 @@ export const sendMessage = async (req, res) => {
       emitToUser(senderId.toString(), 'contactsUpdated');
     }
 
-    let { text, image, video, audio, audioDuration, document, documentName, replyTo } = req.body;
+    let { text, image, video, audio, audioDuration, document, documentName, replyTo, clientMessageId } = req.body;
+
+    // Idempotency check: if message with this clientMessageId was already created, return it
+    if (clientMessageId && typeof clientMessageId === 'string') {
+      const existing = await Message.findOne({
+        senderId,
+        receiverId,
+        clientMessageId,
+      }).populate('replyTo', REPLY_PREVIEW_FIELDS);
+
+      if (existing) {
+        return res.status(200).json(serializeMessage(existing, senderId));
+      }
+    }
+
+    // Guard against rapid duplicate text submissions within 3 seconds
+    if (text && !image && !video && !audio && !document) {
+      const recentDuplicate = await Message.findOne({
+        senderId,
+        receiverId,
+        text: text.trim(),
+        createdAt: { $gte: new Date(Date.now() - 3000) },
+      }).populate('replyTo', REPLY_PREVIEW_FIELDS);
+
+      if (recentDuplicate) {
+        return res.status(200).json(serializeMessage(recentDuplicate, senderId));
+      }
+    }
 
     if (!text && !image && !video && !audio && !document) {
       return res.status(400).json({ message: 'Message must contain text or an attachment.' });
@@ -1048,6 +1075,7 @@ export const sendMessage = async (req, res) => {
     const message = await Message.create({
       senderId,
       receiverId,
+      clientMessageId: clientMessageId || undefined,
       text: text || undefined,
       image: imageUrl || undefined,
       video: videoUrl || undefined,
@@ -1060,7 +1088,9 @@ export const sendMessage = async (req, res) => {
       delivered: isReceiverOnline,
       deliveredAt: isReceiverOnline ? new Date() : undefined,
     });
-    await message.populate('replyTo', REPLY_PREVIEW_FIELDS);
+    if (message.replyTo) {
+      await message.populate('replyTo', REPLY_PREVIEW_FIELDS);
+    }
 
     if (isMessageRequest) {
       emitToUser(receiverId.toString(), 'contactsUpdated');
