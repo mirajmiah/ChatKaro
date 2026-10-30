@@ -170,13 +170,18 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  connectSocket: (user) => {
+  connectSocket: () => {
     const { socket } = get();
     if (socket?.connected) return;
+    if (socket) {
+      socket.disconnect();
+    }
     const newSocket = io(import.meta.env.DEV ? undefined : import.meta.env.VITE_SOCKET_URL, {
       withCredentials: true,
-      reconnectionAttempts: 5,
+      reconnection: true,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
+      timeout: 20000,
     });
     newSocket.on('onlineUsers', (users) => set({ onlineUsers: users }));
     set({ socket: newSocket });
@@ -184,7 +189,7 @@ export const useAuthStore = create((set, get) => ({
 
   disconnectSocket: () => {
     const { socket } = get();
-    if (socket?.connected) socket.disconnect();
+    if (socket) socket.disconnect();
     set({ socket: null, onlineUsers: [] });
   },
 }));

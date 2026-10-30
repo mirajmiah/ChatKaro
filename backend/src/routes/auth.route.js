@@ -21,7 +21,7 @@ import { authLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = express.Router();
 
-router.get('/email-status', getEmailStatus);
+router.get('/email-status', protectRoute, getEmailStatus);
 router.post('/signup', authLimiter, signup);
 router.post('/signup/verify-otp', authLimiter, verifySignupOtp);
 router.post('/signup/resend-otp', authLimiter, resendSignupOtp);

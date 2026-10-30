@@ -178,7 +178,7 @@ export default function MessageBubble({
       const link = document.createElement('a');
       link.href = objectUrl;
       const ext = type === 'image' ? (mediaUrl.split('.').pop()?.split(/[?#]/)[0] || 'jpg') : 'mp4';
-      link.download = `talksy_${type}_${message._id}.${ext}`;
+      link.download = `chatkaro_${type}_${message._id}.${ext}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -195,7 +195,7 @@ export default function MessageBubble({
         const link = document.createElement('a');
         link.href = objectUrl;
         const ext = type === 'image' ? 'jpg' : 'mp4';
-        link.download = `talksy_${type}_${message._id}.${ext}`;
+        link.download = `chatkaro_${type}_${message._id}.${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

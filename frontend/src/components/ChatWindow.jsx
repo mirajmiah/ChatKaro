@@ -43,20 +43,28 @@ export default function ChatWindow() {
     fetchMessages(selectedUser._id);
   }, [selectedUser?._id]);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (messages.length > previousMessageCount.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-    previousMessageCount.current = messages.length;
-  }, [messages]);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     setReplyTarget(null);
     setSelectedMessageIds([]);
     setShowDeleteOptions(false);
     previousMessageCount.current = 0;
+    isInitialLoadRef.current = true;
   }, [selectedUser?._id]);
+
+  // Auto-scroll to bottom when messages change (instant on open, smooth for new messages)
+  useEffect(() => {
+    if (messages.length > previousMessageCount.current) {
+      if (isInitialLoadRef.current) {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+        isInitialLoadRef.current = false;
+      } else {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    previousMessageCount.current = messages.length;
+  }, [messages]);
 
   useEffect(() => {
     const nextExpiry = messages

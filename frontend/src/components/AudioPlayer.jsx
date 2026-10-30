@@ -27,6 +27,15 @@ export default function AudioPlayer({ src, duration: propDuration, isMine = fals
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setHasError(false);
+    if (propDuration) {
+      setDuration(propDuration);
+    }
+  }, [src, propDuration]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 

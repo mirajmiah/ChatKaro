@@ -25,10 +25,20 @@ export default function App() {
   const { theme, language } = useSettingsStore();
   const location = useLocation();
 
+  const socket = useAuthStore((state) => state.socket);
+  const subscribeToMessages = useChatStore((state) => state.subscribeToMessages);
+  const unsubscribeFromMessages = useChatStore((state) => state.unsubscribeFromMessages);
+
   useEffect(() => {
     checkAuth();
     useChatStore.getState().initOfflineQueue();
   }, []);
+
+  useEffect(() => {
+    if (!authUser || !socket) return;
+    subscribeToMessages();
+    return () => unsubscribeFromMessages();
+  }, [authUser, socket, subscribeToMessages, unsubscribeFromMessages]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
