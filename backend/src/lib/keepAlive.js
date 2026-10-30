@@ -55,3 +55,4 @@ export const startKeepAlive = () => {
   // Recurring ping
   keepAliveInterval = setInterval(pingUrl, INTERVAL_MS);
 };
+

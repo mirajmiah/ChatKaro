@@ -78,6 +78,15 @@
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
   }
+
+  /* Ensure attach and action buttons in chat composer do not retain focus outline rings */
+  .chat-composer button:focus,
+  .chat-composer button:focus-visible,
+  .chat-composer button:active {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   .chat-composer {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }

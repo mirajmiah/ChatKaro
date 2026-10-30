@@ -21,6 +21,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
   const [recordingDuration, setRecordingDuration] = useState(0);
 
   const fileInputRef = useRef(null);
+  const attachButtonRef = useRef(null);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const shouldRefocusAfterSend = useRef(false);
@@ -84,10 +85,22 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     reader.readAsDataURL(file);
   };
 
+  const handleAttachClick = () => {
+    attachButtonRef.current?.blur();
+    const onWindowFocus = () => {
+      attachButtonRef.current?.blur();
+      window.removeEventListener('focus', onWindowFocus);
+    };
+    window.addEventListener('focus', onWindowFocus);
+    fileInputRef.current?.click();
+  };
+
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) processFile(file);
     e.target.value = '';
+    attachButtonRef.current?.blur();
+    textareaRef.current?.focus();
   };
 
   const handlePaste = useCallback((e) => {
@@ -510,12 +523,12 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
         <div className="flex items-end gap-2">
           {/* File attach */}
           <button
+            ref={attachButtonRef}
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className={`btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 ${
-              attachment ? 'text-primary' : 'text-base-content/50'
-            } hover:text-base-content`}
+            onClick={handleAttachClick}
+            className="btn btn-ghost btn-sm btn-circle min-h-11 min-w-11 shrink-0 mb-0.5 text-base-content/50 hover:text-base-content outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none"
             aria-label={t('Attach file')}
+            title={t('Attach file')}
           >
             <Paperclip size={20} />
           </button>
@@ -525,6 +538,10 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
             accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
             className="hidden"
             onChange={handleFileChange}
+            onCancel={() => {
+              attachButtonRef.current?.blur();
+              textareaRef.current?.focus();
+            }}
           />
 
           {/* Emoji picker button */}
