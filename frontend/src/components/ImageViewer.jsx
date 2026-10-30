@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Reply, X } from 'lucide-react';
+import { Download, Forward, Reply, X } from 'lucide-react';
 import { useTranslation } from '../lib/i18n.js';
 
 export default function ImageViewer({
@@ -9,6 +9,7 @@ export default function ImageViewer({
   closeLabel,
   onClose,
   onReply,
+  onForward,
   onDownload,
   title,
   timestamp,
@@ -23,7 +24,7 @@ export default function ImageViewer({
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [onClose]);
 
-  const hasToolbar = Boolean(title || timestamp || onReply || onDownload);
+  const hasToolbar = Boolean(title || timestamp || onReply || onForward || onDownload);
 
   return createPortal(
     <div
@@ -67,6 +68,21 @@ export default function ImageViewer({
               >
                 <Reply size={15} />
                 <span className="hidden sm:inline">{t('Reply')}</span>
+              </button>
+            )}
+            {onForward && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onForward();
+                }}
+                className="btn btn-sm btn-outline text-white hover:bg-white/20 border-white/30 gap-1.5 h-9 min-h-0 px-2.5 sm:px-3"
+                title={t('Forward')}
+                aria-label={t('Forward')}
+              >
+                <Forward size={15} />
+                <span className="hidden sm:inline">{t('Forward')}</span>
               </button>
             )}
             {onDownload && (

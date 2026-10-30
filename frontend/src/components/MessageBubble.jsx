@@ -757,6 +757,10 @@ export default function MessageBubble({
                 title={name || t('Photo')}
                 timestamp={formatMsgTime(message.createdAt, language)}
                 onReply={() => onReply(message)}
+                onForward={() => {
+                  setImgExpanded(false);
+                  setShowForwardPicker(true);
+                }}
                 onDownload={(e) => handleDownloadMedia('image', e)}
                 closeLabel={t('Close image')}
                 onClose={() => setImgExpanded(false)}
@@ -849,7 +853,7 @@ export default function MessageBubble({
       </div>
 
       {showForwardPicker && createPortal(
-        <div className="modal modal-open z-[1100]" role="dialog" aria-modal="true" onClick={() => setShowForwardPicker(false)}>
+        <div className="modal modal-open z-[1300]" role="dialog" aria-modal="true" onClick={() => setShowForwardPicker(false)}>
           <div className="modal-box max-h-[80vh] max-w-sm" onClick={(event) => event.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-bold">{t('Forward message')}</h3>
