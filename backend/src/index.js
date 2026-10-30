@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { connectDB } from './lib/db.js';
 import { initSocket } from './lib/socket.js';
 import { SERVER_COMMIT, SERVER_START_TIME } from './lib/version.js';
+import { startKeepAlive } from './lib/keepAlive.js';
 import authRoutes from './routes/auth.route.js';
 import messageRoutes from './routes/message.route.js';
 
@@ -44,6 +45,18 @@ app.use('/api/messages', messageRoutes);
 // Compatibility alias: handles requests sent without the /api prefix
 app.use('/auth', authRoutes);
 app.use('/messages', messageRoutes);
+
+// Lightweight health & ping endpoints for Render keep-alive and uptime monitors
+app.get(['/api/ping', '/ping', '/api/health', '/health'], (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.status(200).json({
+    status: 'ok',
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Version endpoint for client auto-refresh upon Render deployment/commit
 app.get(['/api/version', '/version'], (_req, res) => {
@@ -104,5 +117,6 @@ connectDB().then(() => {
     console.log(`\n🚀 ChatKaro running on http://localhost:${PORT}`);
     console.log(`   Env        : ${process.env.NODE_ENV || 'development'}`);
     console.log(`   Frontend   : ${process.env.FRONTEND_URL || 'http://localhost:5173'}\n`);
+    startKeepAlive();
   });
 });

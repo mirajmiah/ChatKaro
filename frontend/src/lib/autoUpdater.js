@@ -84,3 +84,4 @@ export const initAutoUpdater = (socket) => {
   window.removeEventListener('vite:preloadError', handlePreloadError);
   window.addEventListener('vite:preloadError', handlePreloadError);
 };
+
