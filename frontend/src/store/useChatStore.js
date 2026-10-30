@@ -91,11 +91,20 @@ fetchUsers: async () => {
       sortByLatestMessage(users);
 
     set((state) => {
-      const selectedStillMutual = users.some((user) => user._id === state.selectedUser?._id);
+      let currentSelected = state.selectedUser;
+      if (!currentSelected && typeof window !== 'undefined') {
+        const savedUserId = window.sessionStorage.getItem('chatkaro-selected-user-id');
+        if (savedUserId) {
+          currentSelected = users.find((u) => toIdString(u._id) === savedUserId) || null;
+        }
+      } else if (currentSelected) {
+        const selectedStillMutual = users.some((user) => toIdString(user._id) === toIdString(currentSelected._id));
+        currentSelected = selectedStillMutual ? currentSelected : null;
+      }
       return {
         users,
-        selectedUser: selectedStillMutual ? state.selectedUser : null,
-        messages: selectedStillMutual ? state.messages : [],
+        selectedUser: currentSelected,
+        messages: currentSelected ? state.messages : [],
       };
     });
   } catch (err) {
@@ -359,6 +368,13 @@ fetchUsers: async () => {
 
   selectUser: (user) => {
     const targetId = toIdString(user?._id);
+    if (typeof window !== 'undefined') {
+      if (user) {
+        window.sessionStorage.setItem('chatkaro-selected-user-id', targetId);
+      } else {
+        window.sessionStorage.removeItem('chatkaro-selected-user-id');
+      }
+    }
     const authUser = useAuthStore.getState().authUser;
     const currentUserId = toIdString(authUser?._id);
     const pendingForUser = (get().pendingQueue || [])
@@ -407,6 +423,7 @@ fetchUsers: async () => {
         );
         return {
           messages: dedupeMessages([...serverMessages, ...pendingSocketMessages, ...pendingMessages]),
+          isLoadingMessages: false,
         };
       });
     } catch (err) {

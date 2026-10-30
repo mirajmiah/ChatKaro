@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Check, Copy, MessageSquare, Pin, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChatStore } from '../store/useChatStore.js';
@@ -43,7 +43,47 @@ export default function ChatWindow() {
     fetchMessages(selectedUser._id);
   }, [selectedUser?._id]);
 
+  const messagesContainerRef = useRef(null);
   const isInitialLoadRef = useRef(true);
+
+  const scrollToBottom = useCallback((behavior = 'auto') => {
+    const doScroll = () => {
+      const container = messagesContainerRef.current;
+      if (container) {
+        if (behavior === 'smooth') {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        } else {
+          container.scrollTop = container.scrollHeight;
+        }
+      } else {
+        bottomRef.current?.scrollIntoView({ behavior });
+      }
+    };
+
+    // Immediate scroll
+    doScroll();
+
+    // Check again on animation frames and short timeouts to catch late image/layout shifts
+    requestAnimationFrame(doScroll);
+    const t1 = setTimeout(doScroll, 60);
+    const t2 = setTimeout(doScroll, 180);
+    const t3 = setTimeout(doScroll, 350);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
+  const handleMediaLoad = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromBottom < 300 || isInitialLoadRef.current) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, []);
 
   useEffect(() => {
     setReplyTarget(null);
@@ -53,18 +93,23 @@ export default function ChatWindow() {
     isInitialLoadRef.current = true;
   }, [selectedUser?._id]);
 
-  // Auto-scroll to bottom when messages change (instant on open, smooth for new messages)
+  // Auto-scroll to bottom once messages finish loading or new messages arrive
   useEffect(() => {
-    if (messages.length > previousMessageCount.current) {
+    if (isLoadingMessages) return;
+
+    if (messages.length > 0) {
       if (isInitialLoadRef.current) {
-        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+        scrollToBottom('auto');
         isInitialLoadRef.current = false;
+        previousMessageCount.current = messages.length;
+      } else if (messages.length > previousMessageCount.current) {
+        scrollToBottom('smooth');
+        previousMessageCount.current = messages.length;
       } else {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        previousMessageCount.current = messages.length;
       }
     }
-    previousMessageCount.current = messages.length;
-  }, [messages]);
+  }, [messages, isLoadingMessages, scrollToBottom]);
 
   useEffect(() => {
     const nextExpiry = messages
@@ -245,7 +290,7 @@ export default function ChatWindow() {
       )}
 
       {/* Message list */}
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin py-4 space-y-1">
+      <div ref={messagesContainerRef} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin py-4 space-y-1">
         {isLoadingMessages ? (
           <div className="space-y-4 pt-2">
             <BubbleSkeleton align="start" />
@@ -294,6 +339,7 @@ export default function ChatWindow() {
                 isSameSenderAsPrev={isSameSenderAsPrev}
                 isSameSenderAsNext={isSameSenderAsNext}
                 isHighlighted={highlightedMessageId === String(msg._id)}
+                onMediaLoad={handleMediaLoad}
               />
             );
           })

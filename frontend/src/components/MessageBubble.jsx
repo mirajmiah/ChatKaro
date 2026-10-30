@@ -86,6 +86,7 @@ export default function MessageBubble({
   isSameSenderAsPrev = false,
   isSameSenderAsNext = false,
   isHighlighted = false,
+  onMediaLoad,
 }) {
   const { language, t } = useTranslation();
   const isMine = String(message.senderId) === String(authUser?._id);
@@ -745,6 +746,7 @@ export default function MessageBubble({
                   event.stopPropagation();
                   setImgExpanded(true);
                 }}
+                onLoad={onMediaLoad}
                 className="w-full max-h-[360px] object-cover rounded-[14px] hover:opacity-95 transition-opacity duration-150 shadow-xs block"
                 loading="lazy"
               />
