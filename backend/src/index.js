@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 
 import { connectDB } from './lib/db.js';
 import { initSocket } from './lib/socket.js';
+import { SERVER_COMMIT, SERVER_START_TIME } from './lib/version.js';
 import authRoutes from './routes/auth.route.js';
 import messageRoutes from './routes/message.route.js';
 
@@ -44,6 +45,17 @@ app.use('/api/messages', messageRoutes);
 app.use('/auth', authRoutes);
 app.use('/messages', messageRoutes);
 
+// Version endpoint for client auto-refresh upon Render deployment/commit
+app.get(['/api/version', '/version'], (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.json({
+    commit: process.env.RENDER_GIT_COMMIT || SERVER_COMMIT,
+    buildTime: SERVER_START_TIME,
+  });
+});
+
 // Serve the APK with explicit download headers instead of relying on the
 // frontend static-file handler, which can leave some mobile browsers stuck at 100%.
 app.get('/download/ChatKaro.apk', (_req, res) => {
@@ -61,10 +73,25 @@ app.get('/download/ChatKaro.apk', (_req, res) => {
 // ── Production static serving ─────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
   const frontendDist = path.resolve(__dirname, '../../frontend/dist');
-  app.use(express.static(frontendDist));
+  app.use(
+    express.static(frontendDist, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      },
+    })
+  );
 
-  // SPA fallback — send index.html for any unmatched route
+  // SPA fallback — send index.html with zero-cache headers so updates are instant
   app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
 }

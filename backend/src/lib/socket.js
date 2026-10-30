@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import User from '../models/user.model.js';
+import { SERVER_COMMIT, SERVER_START_TIME } from './version.js';
 
 // userId -> active socket ids
 const onlineUsers = new Map();
@@ -60,6 +61,10 @@ export const initSocket = (httpServer) => {
     onlineUsers.set(uid, sockets);
     socket.emit('onlineUsers', Array.from(onlineUsers.keys()));
     if (wasOffline) io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+    socket.emit('appVersion', {
+      commit: process.env.RENDER_GIT_COMMIT || SERVER_COMMIT,
+      buildTime: SERVER_START_TIME,
+    });
 
     socket.on('typing:start', ({ receiverId }) => {
       if (receiverId) {

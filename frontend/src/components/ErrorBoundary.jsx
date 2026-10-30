@@ -12,6 +12,15 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('Unhandled React Error:', error, errorInfo);
+    const msg = String(error?.message || '');
+    if (
+      msg.includes('dynamically imported module') ||
+      msg.includes('Loading chunk') ||
+      msg.includes('ChunkLoadError') ||
+      msg.includes('Importing a module script failed')
+    ) {
+      window.location.reload();
+    }
   }
 
   handleReload = () => {

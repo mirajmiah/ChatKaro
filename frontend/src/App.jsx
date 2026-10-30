@@ -13,6 +13,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import Navbar from './components/Navbar.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
+import { initAutoUpdater, checkForUpdates } from './lib/autoUpdater.js';
 
 const Loader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -32,7 +33,12 @@ export default function App() {
   useEffect(() => {
     checkAuth();
     useChatStore.getState().initOfflineQueue();
+    checkForUpdates();
   }, []);
+
+  useEffect(() => {
+    initAutoUpdater(socket);
+  }, [socket]);
 
   useEffect(() => {
     if (!authUser || !socket) return;
