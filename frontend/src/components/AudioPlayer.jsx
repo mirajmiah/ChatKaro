@@ -30,6 +30,10 @@ export default function AudioPlayer({ src, duration: propDuration, isMine = fals
     setIsPlaying(false);
     setCurrentTime(0);
     setHasError(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     if (propDuration) {
       setDuration(propDuration);
     }

@@ -197,7 +197,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
     setText('');
     setAttachment(null);
     setShowEmojiPicker(false);
-    onCancelReply();
+    onCancelReply?.();
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTypingStop(selectedUser._id);
 
@@ -345,7 +345,7 @@ export default function ChatInput({ replyTarget, onCancelReply }) {
             audioDuration: durationToSend,
             replyTo: replyTarget?._id,
           });
-          onCancelReply();
+          onCancelReply?.();
         } catch {
           // Toast handled by store
         } finally {

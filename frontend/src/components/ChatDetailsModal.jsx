@@ -48,6 +48,8 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
   const { language, t } = useTranslation();
   const [activeTab, setActiveTab] = useState('media');
   const [showProfileImage, setShowProfileImage] = useState(false);
+
+  if (!user) return null;
   const activeMessages = messages.filter((message) => !message.deletedAt);
   const media = activeMessages.filter((message) => message.image || message.video);
   const documents = activeMessages.filter((message) => message.document);
@@ -56,7 +58,6 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
     const urls = message.text?.match(/https?:\/\/[^\s<>()]+/gi) || [];
     return urls.map((url, index) => ({ message, url: url.replace(/[.,!?;:]+$/, ''), key: `${message._id}-${index}` }));
   });
-  const initials = user.fullName.split(' ').map((part) => part[0]).join('').toUpperCase().slice(0, 2);
 
   const jump = (messageId) => {
     onClose();

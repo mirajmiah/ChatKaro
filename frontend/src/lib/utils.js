@@ -6,7 +6,9 @@
 const getLocale = (language) => (language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US');
 
 export const formatMsgTime = (dateStr, language = 'en') => {
+  if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
   return date.toLocaleTimeString(getLocale(language), { hour: '2-digit', minute: '2-digit' });
 };
 
@@ -18,6 +20,7 @@ export const formatMsgTime = (dateStr, language = 'en') => {
 export const formatLastSeen = (dateStr, language = 'en') => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
   const now = new Date();
   const diffMs = now - date;
   const diffMins = Math.floor(diffMs / 60000);
