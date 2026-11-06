@@ -3,6 +3,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -72,15 +73,24 @@ app.get(['/api/version', '/version'], (_req, res) => {
 // Serve the APK with explicit download headers instead of relying on the
 // frontend static-file handler, which can leave some mobile browsers stuck at 100%.
 app.get('/download/ChatKaro.apk', (_req, res) => {
-  const apkPath = path.resolve(__dirname, '../../frontend/dist/ChatKaro.apk');
-  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-  res.setHeader('Cache-Control', 'no-store, no-transform');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.download(apkPath, 'ChatKaro.apk', (err) => {
-    if (err && !res.headersSent) {
-      res.status(404).json({ message: 'ChatKaro APK is not available yet. Please try again after deployment.' });
-    }
-  });
+  const distApkPath = path.resolve(__dirname, '../../frontend/dist/ChatKaro.apk');
+  const publicApkPath = path.resolve(__dirname, '../../frontend/public/ChatKaro.apk');
+  const apkPath = fs.existsSync(distApkPath) ? distApkPath : (fs.existsSync(publicApkPath) ? publicApkPath : null);
+
+  if (apkPath) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.download(apkPath, 'ChatKaro.apk', (err) => {
+      if (err && !res.headersSent) {
+        res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/ChatKaro.apk');
+      }
+    });
+  }
+
+  res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/ChatKaro.apk');
 });
 
 // ── Production static serving ─────────────────────────────────────────────────

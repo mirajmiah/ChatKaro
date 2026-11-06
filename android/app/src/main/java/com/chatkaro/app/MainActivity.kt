@@ -8,10 +8,17 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.webkit.*
+import android.webkit.CookieManager
+import android.webkit.PermissionRequest
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 
 class MainActivity : Activity() {
-    private lateinit var webView: WebView
+    private var webView: WebView? = null
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private val appUrl = "https://chatkaro-7cv0.onrender.com"
 
@@ -32,81 +39,80 @@ class MainActivity : Activity() {
             }
         }
 
-        webView = WebView(this).apply {
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                databaseEnabled = true
-                useWideViewPort = true
-                loadWithOverviewMode = true
-                allowFileAccess = true
-                mediaPlaybackRequiresUserGesture = false
-                cacheMode = WebSettings.LOAD_DEFAULT
-                userAgentString = settings.userAgentString + " ChatKaroAndroidApp/1.0"
-            }
+        val wv = WebView(this)
+        webView = wv
 
-            CookieManager.getInstance().apply {
-                setAcceptCookie(true)
-                setAcceptThirdPartyCookies(this@apply, true)
-            }
+        val settings: WebSettings = wv.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.databaseEnabled = true
+        settings.useWideViewPort = true
+        settings.loadWithOverviewMode = true
+        settings.allowFileAccess = true
+        settings.mediaPlaybackRequiresUserGesture = false
+        settings.cacheMode = WebSettings.LOAD_DEFAULT
+        val defaultUserAgent = settings.userAgentString ?: ""
+        settings.userAgentString = "$defaultUserAgent ChatKaroAndroidApp/1.0"
 
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                    val url = request?.url?.toString() ?: return false
-                    // Keep ChatKaro and Google authentication inside the app WebView
-                    if (url.startsWith(appUrl) ||
-                        url.startsWith("https://chatkaro") ||
-                        url.contains("accounts.google.com") ||
-                        url.contains("google.com/oauth")
-                    ) {
-                        return false
-                    }
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(wv, true)
 
-                    // Open external links (e.g. shared websites) in system browser
-                    return try {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        true
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-            }
-
-            webChromeClient = object : WebChromeClient() {
-                // File chooser for images, videos, audio, and documents
-                override fun onShowFileChooser(
-                    view: WebView?,
-                    filePathCallback: ValueCallback<Array<Uri>>?,
-                    fileChooserParams: FileChooserParams?
-                ): Boolean {
-                    fileChooserCallback?.onReceiveValue(null)
-                    fileChooserCallback = filePathCallback
-
-                    val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
-                        type = "*/*"
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                    }
-
-                    return try {
-                        startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE)
-                        true
-                    } catch (_: Exception) {
-                        fileChooserCallback?.onReceiveValue(null)
-                        fileChooserCallback = null
-                        false
-                    }
+        wv.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url?.toString() ?: return false
+                // Keep ChatKaro and Google authentication inside the app WebView
+                if (url.startsWith(appUrl) ||
+                    url.startsWith("https://chatkaro") ||
+                    url.contains("accounts.google.com") ||
+                    url.contains("google.com/oauth")
+                ) {
+                    return false
                 }
 
-                // Grant microphone and media permissions requested by the web app
-                override fun onPermissionRequest(request: PermissionRequest?) {
-                    request?.grant(request.resources)
+                // Open external links in system browser
+                return try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    true
+                } catch (e: Exception) {
+                    false
                 }
             }
-
-            loadUrl(appUrl)
         }
 
-        setContentView(webView)
+        wv.webChromeClient = object : WebChromeClient() {
+            // File chooser for images, videos, audio, and documents
+            override fun onShowFileChooser(
+                view: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                fileChooserCallback?.onReceiveValue(null)
+                fileChooserCallback = filePathCallback
+
+                val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "*/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }
+
+                return try {
+                    startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE)
+                    true
+                } catch (e: Exception) {
+                    fileChooserCallback?.onReceiveValue(null)
+                    fileChooserCallback = null
+                    false
+                }
+            }
+
+            // Grant microphone and media permissions requested by the web app
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                request?.grant(request.resources)
+            }
+        }
+
+        wv.loadUrl(appUrl)
+        setContentView(wv)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -120,8 +126,9 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
+        val wv = webView
+        if (wv != null && wv.canGoBack()) {
+            wv.goBack()
         } else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
