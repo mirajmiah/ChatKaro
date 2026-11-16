@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "ChatKaro Desktop",
+  "name": "ChatKaro",
   "short_name": "ChatKaro",
-  "description": "ChatKaro — Fast, real-time messaging desktop app",
+  "description": "ChatKaro — Fast, real-time messaging app",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

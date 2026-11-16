@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut, Laptop } from 'lucide-react';
+import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut, Laptop, Smartphone, Download } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useInstallStore } from '../store/useInstallStore.js';
 import { useTranslation } from '../lib/i18n.js';
@@ -8,7 +8,7 @@ import Logo from './Logo.jsx';
 
 export default function Navbar() {
   const { authUser, logout } = useAuthStore();
-  const { isInstalled, promptInstall } = useInstallStore();
+  const { isInstalled, isMobile, promptInstall } = useInstallStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,10 +66,10 @@ export default function Navbar() {
               type="button"
               onClick={promptInstall}
               className="btn btn-ghost btn-sm gap-1.5 hidden sm:inline-flex text-primary font-medium hover:bg-primary/10"
-              title={t('Install ChatKaro Desktop App')}
-              aria-label={t('Install ChatKaro Desktop App')}
+              title={t('Install ChatKaro App')}
+              aria-label={t('Install ChatKaro App')}
             >
-              <Laptop size={16} />
+              <Download size={16} />
               <span>{t('Install App')}</span>
             </button>
           )}
@@ -104,11 +104,13 @@ export default function Navbar() {
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                          <Laptop size={19} />
+                          {isMobile ? <Smartphone size={19} /> : <Laptop size={19} />}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium">{t('Install Desktop App')}</div>
-                          <div className="text-xs opacity-70">{t('Standalone window for PC')}</div>
+                          <div className="text-sm font-medium">{t('Install App')}</div>
+                          <div className="text-xs opacity-70">
+                            {isMobile ? t('Add to home screen') : t('Install on PC / Mac')}
+                          </div>
                         </div>
                       </button>
                     )}
