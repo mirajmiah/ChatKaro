@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut, Laptop } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useInstallStore } from '../store/useInstallStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import Logo from './Logo.jsx';
 
 export default function Navbar() {
   const { authUser, logout } = useAuthStore();
+  const { isInstalled, promptInstall } = useInstallStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,39 +60,72 @@ export default function Navbar() {
       </div>
 
       {authUser && (
-        <div className="relative flex-none" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            className="btn btn-ghost btn-square min-h-11 min-w-11"
-            aria-label={menuOpen ? t('Close menu') : t('Open menu')}
-            aria-expanded={menuOpen}
-            aria-controls="chatkaro-account-menu"
-          >
-            {menuOpen ? <X size={25} /> : <Menu size={28} strokeWidth={2.5} />}
-          </button>
+        <div className="flex items-center gap-1.5">
+          {!isInstalled && (
+            <button
+              type="button"
+              onClick={promptInstall}
+              className="btn btn-ghost btn-sm gap-1.5 hidden sm:inline-flex text-primary font-medium hover:bg-primary/10"
+              title={t('Install ChatKaro Desktop App')}
+              aria-label={t('Install ChatKaro Desktop App')}
+            >
+              <Laptop size={16} />
+              <span>{t('Install App')}</span>
+            </button>
+          )}
 
-          {menuOpen && (
-            <>
-              <section
-                id="chatkaro-account-menu"
-                className="absolute right-0 top-[calc(100%+0.35rem)] z-50 w-[min(17rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border border-base-300 bg-base-100 text-base-content shadow-xl"
-                aria-label={t('Account and app menu')}
-              >
-                <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-1.5">
-                  {items.map(({ label, description, icon: Icon, to }) => (
-                    <Fragment key={label}>
-                    <Link
-                      to={to}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={19} /></span>
-                      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
-                    </Link>
-                    </Fragment>
-                  ))}
-                </div>
+          <div className="relative flex-none" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="btn btn-ghost btn-square min-h-11 min-w-11"
+              aria-label={menuOpen ? t('Close menu') : t('Open menu')}
+              aria-expanded={menuOpen}
+              aria-controls="chatkaro-account-menu"
+            >
+              {menuOpen ? <X size={25} /> : <Menu size={28} strokeWidth={2.5} />}
+            </button>
+
+            {menuOpen && (
+              <>
+                <section
+                  id="chatkaro-account-menu"
+                  className="absolute right-0 top-[calc(100%+0.35rem)] z-50 w-[min(17rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border border-base-300 bg-base-100 text-base-content shadow-xl"
+                  aria-label={t('Account and app menu')}
+                >
+                  <div className="max-h-[min(70vh,34rem)] overflow-y-auto p-1.5">
+                    {!isInstalled && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          promptInstall();
+                        }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                          <Laptop size={19} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium">{t('Install Desktop App')}</div>
+                          <div className="text-xs opacity-70">{t('Standalone window for PC')}</div>
+                        </div>
+                      </button>
+                    )}
+
+                    {items.map(({ label, description, icon: Icon, to }) => (
+                      <Fragment key={label}>
+                        <Link
+                          to={to}
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={19} /></span>
+                          <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
+                        </Link>
+                      </Fragment>
+                    ))}
+                  </div>
 
                 <div className="border-t border-base-300 p-1.5">
                   <button
@@ -108,7 +143,8 @@ export default function Navbar() {
             </>
           )}
         </div>
-      )}
-    </nav>
-  );
+      </div>
+    )}
+  </nav>
+);
 }

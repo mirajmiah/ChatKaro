@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore.js';
 import { useChatStore } from './store/useChatStore.js';
 import { useSettingsStore } from './store/useSettingsStore.js';
+import { useInstallStore } from './store/useInstallStore.js';
 import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
@@ -33,6 +34,7 @@ export default function App() {
   useEffect(() => {
     checkAuth();
     useChatStore.getState().initOfflineQueue();
+    useInstallStore.getState().init();
     checkForUpdates();
   }, []);
 
@@ -61,6 +63,7 @@ export default function App() {
 
   return (
     <div className={authUser && location.pathname === '/' ? 'app-authenticated-layout flex flex-col' : 'min-h-screen flex flex-col'}>
+      <InstallPrompt />
       {authUser && <Navbar />}
       <Routes>
         <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" replace />} />
@@ -71,7 +74,6 @@ export default function App() {
         <Route path="/settings" element={authUser ? <SettingsPage /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-      <InstallPrompt authUser={authUser} />
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
     </div>
   );

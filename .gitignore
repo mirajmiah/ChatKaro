@@ -19,3 +19,9 @@ npm-debug.log*
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+
+# Android build outputs and caches
+.gradle/
+**/.gradle/
+build/
+**/build/

@@ -99,10 +99,18 @@ if (process.env.NODE_ENV === 'production') {
   app.use(
     express.static(frontendDist, {
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith('index.html')) {
+        if (
+          filePath.endsWith('index.html') ||
+          filePath.endsWith('sw.js') ||
+          filePath.endsWith('manifest.webmanifest')
+        ) {
           res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
           res.setHeader('Pragma', 'no-cache');
           res.setHeader('Expires', '0');
+          if (filePath.endsWith('sw.js')) {
+            res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+            res.setHeader('Service-Worker-Allowed', '/');
+          }
         } else {
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }

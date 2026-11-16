@@ -1,24 +1,26 @@
 {
   "id": "/",
-  "name": "ChatKaro",
+  "name": "ChatKaro Desktop",
   "short_name": "ChatKaro",
-  "description": "Real-time messaging with ChatKaro",
+  "description": "ChatKaro — Fast, real-time messaging desktop app",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "categories": ["social", "communication", "utilities"],
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
     {
       "src": "/chatkaro-logo-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/chatkaro-logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
