@@ -36,9 +36,9 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  verifySignupOtp: async (email, otp, fullName, password) => {
+  verifySignupOtp: async (email, otp, fullName, password, username) => {
     try {
-      const res = await api.post('/auth/signup/verify-otp', { email, otp, fullName, password });
+      const res = await api.post('/auth/signup/verify-otp', { email, otp, fullName, password, username });
       set({ authUser: res.data });
       get().connectSocket(res.data);
       toast.success(translateCurrent('Email verified. Your account is ready.'));
@@ -46,6 +46,19 @@ export const useAuthStore = create((set, get) => ({
     } catch (err) {
       toast.error(translateCurrent(err.response?.data?.message || 'Unable to verify email'));
       throw err;
+    }
+  },
+
+  checkUsernameAvailability: async (username) => {
+    try {
+      const res = await api.get('/auth/check-username', { params: { username } });
+      return res.data;
+    } catch (err) {
+      return {
+        available: false,
+        valid: false,
+        error: err.response?.data?.message || 'Unable to check username availability',
+      };
     }
   },
 
@@ -169,6 +182,23 @@ export const useAuthStore = create((set, get) => ({
       toast.success(translateCurrent('Name updated'));
     } catch (err) {
       toast.error(translateCurrent(err.response?.data?.message || 'Name update failed'));
+      throw err;
+    }
+  },
+
+  updateUsername: async (username) => {
+    try {
+      const res = await api.put('/auth/update-username', { username });
+      set((state) => ({
+        authUser: {
+          ...state.authUser,
+          username: res.data.username,
+        },
+      }));
+      toast.success(translateCurrent('Username updated'));
+      return res.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Username update failed'));
       throw err;
     }
   },

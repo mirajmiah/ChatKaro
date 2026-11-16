@@ -6,6 +6,12 @@ import User from '../models/user.model.js';
 import cloudinary from '../lib/cloudinary.js';
 import { emitToAll } from '../lib/socket.js';
 import { sendOtpEmail } from '../lib/email.js';
+import {
+  validateUsername,
+  normalizeUsername,
+  generateUsernameSuggestions,
+  generateUniqueUsername,
+} from '../lib/username.js';
 
 const COOKIE_NAME = 'nexus-jwt';
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -33,7 +39,7 @@ const setCookie = (res, token) => {
 
 export const signup = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, password, username } = req.body;
 
     if (
       typeof fullName !== 'string' || !fullName.trim() ||
@@ -52,15 +58,43 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: 'Email is already in use.' });
     }
 
+    // Validate username if provided, or generate a clean unique one
+    let finalUsername = '';
+    if (typeof username === 'string' && username.trim()) {
+      const uVal = validateUsername(username.trim().replace(/^@+/, ''));
+      if (!uVal.isValid) {
+        return res.status(400).json({ message: uVal.error });
+      }
+      finalUsername = uVal.normalized;
+      const existingUserWithUsername = await User.findOne({
+        username: finalUsername,
+        email: { $ne: normalizedEmail },
+        emailVerified: true,
+      });
+      if (existingUserWithUsername) {
+        return res.status(409).json({ message: 'Username is already taken. Please choose another.' });
+      }
+    } else {
+      finalUsername = await generateUniqueUsername(fullName, async (cand) => {
+        const count = await User.countDocuments({ username: cand, email: { $ne: normalizedEmail } });
+        return count > 0;
+      });
+    }
+
     const hashedPassword = await bcryptjs.hash(password, 12);
     const otp = crypto.randomInt(100000, 1000000).toString();
     if (!user) {
       user = new User({
         fullName: fullName.trim(),
+        username: finalUsername,
         email: normalizedEmail,
         password: hashedPassword,
         emailVerified: false,
       });
+    } else {
+      user.fullName = fullName.trim();
+      user.username = finalUsername;
+      user.password = hashedPassword;
     }
     user.signupOtpHash = hashOtp(otp);
     user.signupOtpExpires = Date.now() + 10 * 60 * 1000;
@@ -86,7 +120,7 @@ export const signup = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ message: 'Email is already in use.' });
+      return res.status(409).json({ message: 'Email or username is already in use.' });
     }
     console.error('signup error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
@@ -99,6 +133,8 @@ export const verifySignupOtp = async (req, res) => {
     const otp = typeof req.body.otp === 'string' ? req.body.otp.trim() : '';
     const fullName = typeof req.body.fullName === 'string' ? req.body.fullName.trim() : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const rawUsername = typeof req.body.username === 'string' ? req.body.username.trim().replace(/^@+/, '') : '';
+
     if (!email || !/^\d{6}$/.test(otp)) {
       return res.status(400).json({ message: 'Enter a valid six-digit verification code.' });
     }
@@ -123,7 +159,30 @@ export const verifySignupOtp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid verification code.' });
     }
 
+    let finalUsername = user.username;
+    if (rawUsername) {
+      const uVal = validateUsername(rawUsername);
+      if (uVal.isValid) {
+        const taken = await User.findOne({
+          username: uVal.normalized,
+          _id: { $ne: user._id },
+          emailVerified: true,
+        });
+        if (taken) {
+          return res.status(409).json({ message: 'Username is already taken. Please choose another.' });
+        }
+        finalUsername = uVal.normalized;
+      }
+    }
+    if (!finalUsername) {
+      finalUsername = await generateUniqueUsername(fullName || email, async (cand) => {
+        const count = await User.countDocuments({ username: cand, _id: { $ne: user._id } });
+        return count > 0;
+      });
+    }
+
     user.fullName = fullName;
+    user.username = finalUsername;
     user.password = await bcryptjs.hash(password, 12);
     user.emailVerified = true;
     user.signupOtpHash = undefined;
@@ -135,6 +194,7 @@ export const verifySignupOtp = async (req, res) => {
     return res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
+      username: user.username,
       email: user.email,
       profilePic: user.profilePic,
       bio: user.bio,
@@ -252,6 +312,13 @@ export const verifyLoginOtp = async (req, res) => {
       return res.status(400).json({ message: 'Invalid verification code.' });
     }
 
+    if (!user.username) {
+      user.username = await generateUniqueUsername(user.fullName || user.email, async (cand) => {
+        const count = await User.countDocuments({ username: cand, _id: { $ne: user._id } });
+        return count > 0;
+      });
+    }
+
     user.loginOtpHash = undefined;
     user.loginOtpExpires = undefined;
     user.lastSeen = new Date();
@@ -263,6 +330,7 @@ export const verifyLoginOtp = async (req, res) => {
     return res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
+      username: user.username,
       email: user.email,
       profilePic: user.profilePic,
       bio: user.bio,
@@ -334,14 +402,25 @@ export const googleLogin = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
+      const autoUsername = await generateUniqueUsername(payload.name || email.split('@')[0], async (cand) => {
+        const count = await User.countDocuments({ username: cand });
+        return count > 0;
+      });
       user = await User.create({
         fullName: payload.name || email.split('@')[0],
+        username: autoUsername,
         email,
         googleId: payload.sub,
         profilePic: payload.picture || '',
         password: await bcryptjs.hash(crypto.randomBytes(32).toString('hex'), 12),
       });
     } else {
+      if (!user.username) {
+        user.username = await generateUniqueUsername(user.fullName || user.email, async (cand) => {
+          const count = await User.countDocuments({ username: cand, _id: { $ne: user._id } });
+          return count > 0;
+        });
+      }
       if (user.googleId && user.googleId !== payload.sub) {
         return res.status(409).json({ message: 'This account is linked to another Google account.' });
       }
@@ -362,6 +441,7 @@ export const googleLogin = async (req, res) => {
     return res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
+      username: user.username,
       email: user.email,
       profilePic: user.profilePic,
       bio: user.bio,
@@ -379,7 +459,15 @@ export const logout = (_req, res) => {
   return res.status(200).json({ message: 'Logged out.' });
 };
 
-export const checkAuth = (req, res) => {
+export const checkAuth = async (req, res) => {
+  if (!req.user.username) {
+    const autoUsername = await generateUniqueUsername(req.user.fullName || req.user.email, async (cand) => {
+      const count = await User.countDocuments({ username: cand, _id: { $ne: req.user._id } });
+      return count > 0;
+    });
+    req.user.username = autoUsername;
+    await User.findByIdAndUpdate(req.user._id, { username: autoUsername });
+  }
   return res.status(200).json(req.user);
 };
 
@@ -573,4 +661,97 @@ export const getEmailStatus = async (_req, res) => {
   }
 
   return res.status(200).json(status);
+};
+
+export const checkUsernameAvailability = async (req, res) => {
+  try {
+    const raw = typeof req.query.username === 'string' ? req.query.username : '';
+    const clean = raw.trim().replace(/^@+/, '');
+
+    if (!clean) {
+      return res.status(200).json({
+        available: false,
+        valid: false,
+        message: 'Username is required.',
+        suggestions: [],
+      });
+    }
+
+    const validation = validateUsername(clean);
+    if (!validation.isValid) {
+      return res.status(200).json({
+        available: false,
+        valid: false,
+        message: validation.error,
+        suggestions: [],
+      });
+    }
+
+    const normalized = validation.normalized;
+    const existing = await User.findOne({ username: normalized, emailVerified: true });
+
+    if (existing) {
+      const suggestions = await generateUsernameSuggestions(normalized, async (cand) => {
+        const count = await User.countDocuments({ username: cand, emailVerified: true });
+        return count > 0;
+      });
+      return res.status(200).json({
+        available: false,
+        valid: true,
+        normalized,
+        message: 'Username is already taken.',
+        suggestions,
+      });
+    }
+
+    return res.status(200).json({
+      available: true,
+      valid: true,
+      normalized,
+      message: 'Username is available!',
+      suggestions: [],
+    });
+  } catch (error) {
+    console.error('checkUsernameAvailability error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const updateUsername = async (req, res) => {
+  try {
+    const raw = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const clean = raw.replace(/^@+/, '');
+    const validation = validateUsername(clean);
+    if (!validation.isValid) {
+      return res.status(400).json({ message: validation.error });
+    }
+
+    const normalized = validation.normalized;
+    const existing = await User.findOne({
+      username: normalized,
+      _id: { $ne: req.user._id },
+      emailVerified: true,
+    });
+    if (existing) {
+      return res.status(409).json({ message: 'Username is already taken.' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { username: normalized },
+      { new: true }
+    ).select('-password');
+
+    emitToAll('profileUpdated', {
+      _id: user._id.toString(),
+      username: user.username,
+      fullName: user.fullName,
+      profilePic: user.profilePic,
+    });
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error('updateUsername error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
 };

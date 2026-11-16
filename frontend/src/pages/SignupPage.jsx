@@ -1,10 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import Logo from '../components/Logo.jsx';
+
+const USERNAME_REGEX = /^(?!.*\.\.)(?!^\.)[a-zA-Z0-9._]{1,30}(?<!\.)$/;
+
+function validateClientUsername(username) {
+  if (!username) return { isValid: false, error: '' };
+  const trimmed = username.trim();
+  if (trimmed.length < 1) return { isValid: false, error: 'Username must be at least 1 character long.' };
+  if (trimmed.length > 30) return { isValid: false, error: 'Username cannot exceed 30 characters.' };
+  if (/\s/.test(trimmed)) return { isValid: false, error: 'Username cannot contain spaces.' };
+  if (trimmed.startsWith('.')) return { isValid: false, error: 'Username cannot start with a period.' };
+  if (trimmed.endsWith('.')) return { isValid: false, error: 'Username cannot end with a period.' };
+  if (trimmed.includes('..')) return { isValid: false, error: 'Username cannot contain consecutive periods.' };
+  if (!/^[a-zA-Z0-9._]+$/.test(trimmed)) {
+    return { isValid: false, error: 'Username can only contain letters, numbers, underscores (_), and periods (.).' };
+  }
+  if (!USERNAME_REGEX.test(trimmed)) {
+    return { isValid: false, error: 'Invalid username format.' };
+  }
+  return { isValid: true, normalized: trimmed.toLowerCase() };
+}
 
 function SupportIllustration() {
   const { t } = useTranslation();
@@ -20,10 +40,10 @@ function SupportIllustration() {
 }
 
 export default function SignUpPage() {
-  const { signup, verifySignupOtp, resendSignupOtp, googleLogin } = useAuthStore();
+  const { signup, verifySignupOtp, resendSignupOtp, googleLogin, checkUsernameAvailability } = useAuthStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ fullName: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ fullName: '', username: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -31,6 +51,12 @@ export default function SignUpPage() {
   const [verificationStep, setVerificationStep] = useState(false);
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Username validation state
+  const [usernameStatus, setUsernameStatus] = useState('idle'); // idle | checking | available | taken | invalid
+  const [usernameError, setUsernameError] = useState('');
+  const [usernameSuggestions, setUsernameSuggestions] = useState([]);
+  const usernameCheckTimer = useRef(null);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -40,15 +66,87 @@ export default function SignUpPage() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
+  const checkAvailability = async (cleaned) => {
+    try {
+      const res = await checkUsernameAvailability(cleaned);
+      if (res.available) {
+        setUsernameStatus('available');
+        setUsernameError('');
+        setUsernameSuggestions([]);
+      } else {
+        setUsernameStatus('taken');
+        setUsernameError(res.error || 'Username is already taken.');
+        setUsernameSuggestions(res.suggestions || []);
+      }
+    } catch {
+      setUsernameStatus('invalid');
+      setUsernameError('Unable to check username availability.');
+    }
+  };
+
+  const handleUsernameChange = (event) => {
+    const rawValue = event.target.value.replace(/^@+/, '');
+    setFormData((prev) => ({ ...prev, username: rawValue }));
+
+    if (usernameCheckTimer.current) {
+      clearTimeout(usernameCheckTimer.current);
+    }
+
+    if (!rawValue.trim()) {
+      setUsernameStatus('idle');
+      setUsernameError('');
+      setUsernameSuggestions([]);
+      return;
+    }
+
+    const validation = validateClientUsername(rawValue);
+    if (!validation.isValid) {
+      setUsernameStatus('invalid');
+      setUsernameError(validation.error);
+      setUsernameSuggestions([]);
+      return;
+    }
+
+    setUsernameStatus('checking');
+    setUsernameError('');
+    setUsernameSuggestions([]);
+
+    usernameCheckTimer.current = setTimeout(() => {
+      checkAvailability(validation.normalized);
+    }, 350);
+  };
+
+  const handlePickSuggestion = (suggestion) => {
+    setFormData((prev) => ({ ...prev, username: suggestion }));
+    setUsernameStatus('available');
+    setUsernameError('');
+    setUsernameSuggestions([]);
+  };
+
   const handleChange = (event) => {
     setFormData((previous) => ({ ...previous, [event.target.name]: event.target.value }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const validation = validateClientUsername(formData.username);
+    if (!validation.isValid) {
+      setUsernameStatus('invalid');
+      setUsernameError(validation.error || 'Please choose a valid username.');
+      return;
+    }
+
+    if (usernameStatus === 'taken' || usernameStatus === 'invalid') {
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await signup(formData);
+      await signup({
+        ...formData,
+        username: validation.normalized,
+      });
       setVerificationStep(true);
       setResendCooldown(30);
     } catch {
@@ -62,7 +160,13 @@ export default function SignUpPage() {
     event.preventDefault();
     setIsVerifying(true);
     try {
-      await verifySignupOtp(formData.email, otp, formData.fullName, formData.password);
+      await verifySignupOtp(
+        formData.email,
+        otp,
+        formData.fullName,
+        formData.password,
+        formData.username.trim().toLowerCase()
+      );
       navigate('/');
     } catch {
       // Errors are reported by the auth store.
@@ -186,6 +290,69 @@ export default function SignUpPage() {
                 placeholder={t('Full name example')}
                 className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#604399] focus:ring-2 focus:ring-[#604399]/20"
               />
+            </div>
+
+            <div>
+              <label htmlFor="signup-username" className="mb-2 block text-sm font-medium text-gray-800">{t('Username')}</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-400 select-none">
+                  @
+                </span>
+                <input
+                  id="signup-username"
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleUsernameChange}
+                  required
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck="false"
+                  maxLength={30}
+                  placeholder="your_unique_username"
+                  className={`h-11 w-full rounded-md border bg-white pl-8 pr-10 text-base text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 ${
+                    usernameStatus === 'available'
+                      ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20'
+                      : usernameStatus === 'taken' || usernameStatus === 'invalid'
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                        : 'border-gray-300 focus:border-[#604399] focus:ring-[#604399]/20'
+                  }`}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  {usernameStatus === 'checking' && (
+                    <span className="loading loading-spinner loading-xs text-gray-400" />
+                  )}
+                  {usernameStatus === 'available' && (
+                    <Check size={18} className="text-green-600" />
+                  )}
+                  {(usernameStatus === 'taken' || usernameStatus === 'invalid') && (
+                    <X size={18} className="text-red-600" />
+                  )}
+                </div>
+              </div>
+              {usernameStatus === 'available' && (
+                <p className="mt-1 text-xs font-medium text-green-600">{t('Username is available')}</p>
+              )}
+              {usernameError && (
+                <p className="mt-1 text-xs text-red-600">{t(usernameError)}</p>
+              )}
+              {usernameSuggestions.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-1">{t('Suggestions:')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {usernameSuggestions.map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => handlePickSuggestion(sug)}
+                        className="rounded-full border border-[#604399]/30 bg-[#604399]/10 px-2.5 py-0.5 text-xs font-medium text-[#604399] transition hover:bg-[#604399]/20"
+                      >
+                        @{sug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

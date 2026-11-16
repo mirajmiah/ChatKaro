@@ -14,10 +14,13 @@ const contactRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted'],
+      enum: ['pending', 'accepted', 'rejected'],
       default: 'pending',
     },
     acceptedAt: {
+      type: Date,
+    },
+    rejectedAt: {
       type: Date,
     },
   },
@@ -26,6 +29,7 @@ const contactRequestSchema = new mongoose.Schema(
 
 contactRequestSchema.index({ sender: 1, recipient: 1 }, { unique: true });
 contactRequestSchema.index({ recipient: 1, status: 1, createdAt: -1 });
+contactRequestSchema.index({ sender: 1, status: 1, createdAt: -1 });
 
 const ContactRequest = mongoose.model('ContactRequest', contactRequestSchema);
 

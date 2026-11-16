@@ -41,7 +41,12 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold truncate leading-tight">{selectedUser.fullName}</p>
+          <p className="font-semibold truncate leading-tight flex items-center gap-1.5">
+            <span className="truncate">{selectedUser.fullName}</span>
+            {selectedUser.username && (
+              <span className="text-xs font-normal text-primary/80 shrink-0">@{selectedUser.username}</span>
+            )}
+          </p>
           {isTyping ? (
             <p className="text-xs text-primary font-medium flex items-center gap-1.5 animate-pulse">
               <span>{t('typing')}</span>

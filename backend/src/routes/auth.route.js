@@ -15,12 +15,16 @@ import {
   forgotPassword,
   resetPassword,
   getEmailStatus,
+  checkUsernameAvailability,
+  updateUsername,
 } from '../controllers/auth.controller.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
 import { authLimiter } from '../middleware/rateLimit.middleware.js';
 
 const router = express.Router();
 
+router.get('/check-username', checkUsernameAvailability);
+router.put('/update-username', protectRoute, updateUsername);
 router.get('/email-status', protectRoute, getEmailStatus);
 router.post('/signup', authLimiter, signup);
 router.post('/signup/verify-otp', authLimiter, verifySignupOtp);

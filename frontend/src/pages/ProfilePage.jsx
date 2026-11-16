@@ -1,18 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Camera, User, Mail, Calendar, Shield, Pencil, X, Check, AtSign } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import ImageViewer from '../components/ImageViewer.jsx';
 import Avatar from '../components/Avatar.jsx';
 
+const USERNAME_REGEX = /^(?!.*\.\.)(?!^\.)[a-zA-Z0-9._]{1,30}(?<!\.)$/;
+
 export default function ProfilePage() {
-  const { authUser, updateProfile, updateName, updateBio, onlineUsers } = useAuthStore();
+  const { authUser, updateProfile, updateName, updateBio, updateUsername, onlineUsers } = useAuthStore();
   const navigate = useNavigate();
   const { language, t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [editedUsername, setEditedUsername] = useState(authUser?.username || '');
+  const [usernameError, setUsernameError] = useState('');
   const [showProfileImage, setShowProfileImage] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -72,6 +78,33 @@ export default function ProfilePage() {
       setIsEditingBio(false);
     } finally {
       setIsSavingBio(false);
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    const raw = editedUsername.trim().replace(/^@+/, '');
+    if (!raw) {
+      setUsernameError(t('Username is required.'));
+      return;
+    }
+    if (raw.toLowerCase() === authUser?.username?.toLowerCase()) {
+      setIsEditingUsername(false);
+      setUsernameError('');
+      return;
+    }
+    if (!USERNAME_REGEX.test(raw)) {
+      setUsernameError(t('Username can only contain 1-30 letters, numbers, underscores, and periods without consecutive, starting, or ending dots.'));
+      return;
+    }
+    setIsSavingUsername(true);
+    setUsernameError('');
+    try {
+      await updateUsername(raw);
+      setIsEditingUsername(false);
+    } catch (err) {
+      setUsernameError(err.response?.data?.message || t('Username update failed'));
+    } finally {
+      setIsSavingUsername(false);
     }
   };
 
@@ -211,6 +244,84 @@ export default function ProfilePage() {
                         }}
                         className="btn btn-ghost btn-xs"
                         aria-label={t('Edit name')}
+                      >
+                        <Pencil size={14} />
+                        <span>{t('Edit')}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-base-300/50">
+                <AtSign size={18} className="text-primary shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-base-content/50 font-medium uppercase tracking-wide">
+                    {t('Username')}
+                  </p>
+                  {isEditingUsername ? (
+                    <div className="mt-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs font-semibold text-base-content/40 select-none">
+                            @
+                          </span>
+                          <input
+                            value={editedUsername}
+                            onChange={(e) => {
+                              setEditedUsername(e.target.value.replace(/^@+/, ''));
+                              setUsernameError('');
+                            }}
+                            className="input input-bordered input-sm min-w-0 w-full pl-6 text-sm"
+                            autoFocus
+                            maxLength={30}
+                            placeholder="username"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveUsername();
+                              if (e.key === 'Escape') {
+                                setIsEditingUsername(false);
+                                setUsernameError('');
+                              }
+                            }}
+                          />
+                        </div>
+                        <button
+                          onClick={handleSaveUsername}
+                          disabled={isSavingUsername}
+                          className="btn btn-primary btn-sm btn-square"
+                          aria-label={t('Save username')}
+                        >
+                          {isSavingUsername ? <span className="loading loading-spinner loading-xs" /> : <Check size={16} />}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditingUsername(false);
+                            setUsernameError('');
+                          }}
+                          disabled={isSavingUsername}
+                          className="btn btn-ghost btn-sm btn-square"
+                          aria-label={t('Cancel username editing')}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      {usernameError && (
+                        <p className="text-xs text-error">{usernameError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold truncate text-primary">
+                        {authUser?.username ? `@${authUser.username}` : '—'}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setEditedUsername(authUser?.username || '');
+                          setIsEditingUsername(true);
+                          setUsernameError('');
+                        }}
+                        className="btn btn-ghost btn-xs"
+                        aria-label={t('Edit username')}
                       >
                         <Pencil size={14} />
                         <span>{t('Edit')}</span>

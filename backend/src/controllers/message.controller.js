@@ -154,7 +154,7 @@ export const getUsers = async (req, res) => {
     const contactObjectIds = [...contactIds].map((id) => new mongoose.Types.ObjectId(id));
     const [users, unreadCounts, latestMessages] = await Promise.all([
       User.find({ _id: { $in: [...contactIds] } })
-        .select('fullName email profilePic bio lastSeen'),
+        .select('fullName username email profilePic bio lastSeen'),
       Message.aggregate([
         {
           $match: {
@@ -224,13 +224,23 @@ export const getUsers = async (req, res) => {
 
 export const searchContact = async (req, res) => {
   try {
-    const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
-    if (!email) return res.status(400).json({ message: 'Enter an email address to search.' });
+    const raw = typeof req.query.username === 'string'
+      ? req.query.username
+      : typeof req.query.email === 'string'
+        ? req.query.email
+        : typeof req.query.q === 'string'
+          ? req.query.q
+          : '';
+    const query = raw.trim().replace(/^@+/, '').toLowerCase();
+    if (!query) return res.status(400).json({ message: 'Enter a username or email address to search.' });
 
-    const contact = await User.findOne({ email }).select('fullName email profilePic lastSeen contacts');
-    if (!contact) return res.status(404).json({ message: 'No account was found with that email.' });
+    const contact = await User.findOne({
+      $or: [{ username: query }, { email: query }],
+    }).select('fullName username email profilePic bio lastSeen contacts');
+
+    if (!contact) return res.status(404).json({ message: 'No account was found with that username or email.' });
     if (contact._id.toString() === req.user._id.toString()) {
-      return res.status(400).json({ message: 'That email belongs to your account.' });
+      return res.status(400).json({ message: 'That account belongs to you.' });
     }
 
     const wasConnected = await werePreviouslyConnected(req.user._id, contact._id);
@@ -291,15 +301,119 @@ export const searchContact = async (req, res) => {
   }
 };
 
+export const searchUsers = async (req, res) => {
+  try {
+    const raw = typeof req.query.q === 'string'
+      ? req.query.q
+      : typeof req.query.username === 'string'
+        ? req.query.username
+        : '';
+    const query = raw.trim().replace(/^@+/, '');
+
+    if (!query) {
+      return res.status(200).json([]);
+    }
+
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+
+    const users = await User.find({
+      _id: { $ne: req.user._id },
+      emailVerified: true,
+      $or: [
+        { username: regex },
+        { fullName: regex },
+        { email: regex },
+      ],
+    })
+      .select('fullName username profilePic bio lastSeen')
+      .limit(25);
+
+    if (!users.length) {
+      return res.status(200).json([]);
+    }
+
+    const userIds = users.map((u) => u._id);
+
+    const [requests, currentUser] = await Promise.all([
+      ContactRequest.find({
+        $or: [
+          { sender: req.user._id, recipient: { $in: userIds } },
+          { sender: { $in: userIds }, recipient: req.user._id },
+        ],
+      }),
+      User.findById(req.user._id).select('contacts hiddenContacts'),
+    ]);
+
+    const requestMap = new Map();
+    for (const reqDoc of requests) {
+      const otherId = reqDoc.sender.toString() === req.user._id.toString()
+        ? reqDoc.recipient.toString()
+        : reqDoc.sender.toString();
+      requestMap.set(otherId, reqDoc);
+    }
+
+    const results = users.map((user) => {
+      const uId = user._id.toString();
+      const isMutual = currentUser?.contacts?.some((c) => c.toString() === uId);
+      const isHidden = currentUser?.hiddenContacts?.some((h) => h.toString() === uId);
+      const request = requestMap.get(uId);
+
+      let relationship = 'none';
+      let requestId = null;
+
+      if ((isMutual && !isHidden) || request?.status === 'accepted') {
+        relationship = 'connected';
+        requestId = request?._id || null;
+      } else if (request?.status === 'pending') {
+        if (request.sender.toString() === req.user._id.toString()) {
+          relationship = 'request_sent';
+          requestId = request._id;
+        } else {
+          relationship = 'request_received';
+          requestId = request._id;
+        }
+      } else if (request?.status === 'rejected') {
+        relationship = 'rejected';
+        requestId = request._id;
+      }
+
+      return {
+        _id: user._id,
+        fullName: user.fullName,
+        username: user.username || '',
+        profilePic: user.profilePic || '',
+        bio: user.bio || '',
+        lastSeen: user.lastSeen,
+        relationship,
+        requestId,
+      };
+    });
+
+    return res.status(200).json(results);
+  } catch (error) {
+    console.error('searchUsers error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
 export const addContact = async (req, res) => {
   try {
-    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    if (!email) return res.status(400).json({ message: 'Enter the contact email address.' });
+    const { targetUserId, username, email } = req.body;
+    let contact = null;
 
-    const contact = await User.findOne({ email }).select('fullName email profilePic lastSeen');
-    if (!contact) return res.status(404).json({ message: 'No account was found with that email.' });
+    if (targetUserId && mongoose.isValidObjectId(targetUserId)) {
+      contact = await User.findById(targetUserId).select('fullName username email profilePic lastSeen');
+    } else if (username && typeof username === 'string') {
+      const cleanUsername = username.trim().replace(/^@+/, '').toLowerCase();
+      contact = await User.findOne({ username: cleanUsername, emailVerified: true }).select('fullName username email profilePic lastSeen');
+    } else if (email && typeof email === 'string') {
+      contact = await User.findOne({ email: email.trim().toLowerCase() }).select('fullName username email profilePic lastSeen');
+    }
+
+    if (!contact) return res.status(404).json({ message: 'User not found.' });
     if (contact._id.toString() === req.user._id.toString()) {
-      return res.status(400).json({ message: 'You cannot add your own account as a contact.' });
+      return res.status(400).json({ message: 'You cannot connect with your own account.' });
     }
 
     const isHidden = await hasHiddenConnection(req.user._id, contact._id);
@@ -316,38 +430,50 @@ export const addContact = async (req, res) => {
 
     if (existingRequest?.status === 'pending') {
       if (existingRequest.sender.toString() !== req.user._id.toString()) {
-        return res.status(409).json({ message: 'This person already sent you a request. Accept it from your incoming requests.' });
+        return res.status(409).json({
+          message: 'This user already sent you a request. Accept it from your received requests.',
+          requestId: existingRequest._id,
+        });
       }
-      return res.status(409).json({ message: 'Your contact request is already pending.' });
+      return res.status(409).json({ message: 'Your connection request is already pending.' });
     }
 
-    // Removing a contact hides the old connection. Allow a fresh request to reconnect.
-    // Replace any old accepted request, and clear the hidden flag for the recipient only
-    // after they accept the new request.
     if (existingRequest) {
-      await ContactRequest.deleteOne({ _id: existingRequest._id });
+      existingRequest.sender = req.user._id;
+      existingRequest.recipient = contact._id;
+      existingRequest.status = 'pending';
+      existingRequest.acceptedAt = undefined;
+      existingRequest.rejectedAt = undefined;
+      await existingRequest.save();
+    } else {
+      existingRequest = await ContactRequest.create({ sender: req.user._id, recipient: contact._id });
     }
 
-    const newRequest = await ContactRequest.create({ sender: req.user._id, recipient: contact._id });
     emitToUser(contact._id.toString(), 'contactsUpdated');
     emitToUser(contact._id.toString(), 'notification', {
       type: 'contactRequest',
       name: req.user.fullName,
+      username: req.user.username,
+      senderId: req.user._id,
     });
+    emitToUser(req.user._id.toString(), 'contactsUpdated');
 
     return res.status(201).json({
-      message: `Contact request sent to ${contact.fullName}.`,
-      requestId: newRequest._id,
+      message: `Connection request sent to ${contact.fullName}.`,
+      requestId: existingRequest._id,
+      relationship: 'request_sent',
       contact: { ...contact.toObject(), requestStatus: 'sent' },
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ message: 'A contact request is already pending.' });
+      return res.status(409).json({ message: 'A connection request is already pending.' });
     }
     console.error('addContact error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };
+
+export const sendContactRequest = addContact;
 
 export const getContactRequests = async (req, res) => {
   try {
@@ -355,11 +481,132 @@ export const getContactRequests = async (req, res) => {
       recipient: req.user._id,
       status: 'pending',
     })
-      .populate('sender', 'fullName email profilePic')
+      .populate('sender', 'fullName username email profilePic bio')
       .sort({ createdAt: -1 });
     return res.status(200).json(requests);
   } catch (error) {
     console.error('getContactRequests error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const getSentContactRequests = async (req, res) => {
+  try {
+    const requests = await ContactRequest.find({
+      sender: req.user._id,
+      status: 'pending',
+    })
+      .populate('recipient', 'fullName username email profilePic bio')
+      .sort({ createdAt: -1 });
+    return res.status(200).json(requests);
+  } catch (error) {
+    console.error('getSentContactRequests error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const cancelContactRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    if (!mongoose.isValidObjectId(requestId)) {
+      return res.status(400).json({ message: 'Invalid request ID.' });
+    }
+
+    const request = await ContactRequest.findOne({
+      _id: requestId,
+      sender: req.user._id,
+      status: 'pending',
+    });
+
+    if (!request) {
+      return res.status(404).json({ message: 'Pending connection request not found.' });
+    }
+
+    const recipientId = request.recipient.toString();
+    await ContactRequest.deleteOne({ _id: request._id });
+
+    emitToUser(recipientId, 'contactsUpdated');
+    emitToUser(req.user._id.toString(), 'contactsUpdated');
+
+    return res.status(200).json({ message: 'Connection request canceled.' });
+  } catch (error) {
+    console.error('cancelContactRequest error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const getConnections = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user._id).select('contacts hiddenContacts');
+    const hiddenSet = new Set((currentUser?.hiddenContacts || []).map((id) => id.toString()));
+
+    const acceptedRequests = await ContactRequest.find({
+      status: 'accepted',
+      $or: [{ sender: req.user._id }, { recipient: req.user._id }],
+    });
+
+    const contactIds = new Set((currentUser?.contacts || []).map((id) => id.toString()));
+    for (const r of acceptedRequests) {
+      const otherId = r.sender.toString() === req.user._id.toString()
+        ? r.recipient.toString()
+        : r.sender.toString();
+      contactIds.add(otherId);
+    }
+
+    for (const h of hiddenSet) {
+      contactIds.delete(h);
+    }
+    contactIds.delete(req.user._id.toString());
+
+    const connections = await User.find({ _id: { $in: [...contactIds] } })
+      .select('fullName username email profilePic bio lastSeen')
+      .sort({ fullName: 1 });
+
+    return res.status(200).json(connections);
+  } catch (error) {
+    console.error('getConnections error:', error.message);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+export const getRelationshipStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    if (userId === req.user._id.toString()) {
+      return res.status(200).json({ relationship: 'self' });
+    }
+
+    const [isMutual, isHidden, request] = await Promise.all([
+      areMutualContacts(req.user._id, userId),
+      hasHiddenConnection(req.user._id, userId),
+      ContactRequest.findOne({
+        $or: [
+          { sender: req.user._id, recipient: userId },
+          { sender: userId, recipient: req.user._id },
+        ],
+      }),
+    ]);
+
+    if ((isMutual && !isHidden) || request?.status === 'accepted') {
+      return res.status(200).json({ relationship: 'connected', requestId: request?._id });
+    }
+    if (request?.status === 'pending') {
+      const relationship = request.sender.toString() === req.user._id.toString()
+        ? 'request_sent'
+        : 'request_received';
+      return res.status(200).json({ relationship, requestId: request._id });
+    }
+    if (request?.status === 'rejected') {
+      return res.status(200).json({ relationship: 'rejected', requestId: request._id });
+    }
+
+    return res.status(200).json({ relationship: 'none', requestId: null });
+  } catch (error) {
+    console.error('getRelationshipStatus error:', error.message);
     return res.status(500).json({ message: 'Internal server error.' });
   }
 };

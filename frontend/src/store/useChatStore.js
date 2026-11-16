@@ -66,6 +66,12 @@ const dedupeMessages = (list) => {
 export const useChatStore = create((set, get) => ({
   users: [],
   contactRequests: [],
+  sentRequests: [],
+  connections: [],
+  userSearchResults: [],
+  isSearchingUsers: false,
+  isLoadingRequests: false,
+  isLoadingConnections: false,
   messageRequests: [],
   selectedUser: null,
   messages: [],
@@ -165,15 +171,145 @@ fetchUsers: async () => {
     }
   },
 
-  respondToContactRequest: async (requestId, accept) => {
+  searchUsers: async (query) => {
+    const raw = typeof query === 'string' ? query.trim() : '';
+    if (!raw) {
+      set({ userSearchResults: [], isSearchingUsers: false });
+      return [];
+    }
+    set({ isSearchingUsers: true });
+    try {
+      const res = await api.get('/messages/users/search', { params: { q: raw } });
+      const results = Array.isArray(res.data) ? res.data : [];
+      set({ userSearchResults: results });
+      return results;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to search users'));
+      set({ userSearchResults: [] });
+      return [];
+    } finally {
+      set({ isSearchingUsers: false });
+    }
+  },
+
+  clearUserSearch: () => {
+    set({ userSearchResults: [], isSearchingUsers: false });
+  },
+
+  fetchSentContactRequests: async () => {
+    set({ isLoadingRequests: true });
+    try {
+      const res = await api.get('/messages/contacts/requests/sent');
+      const list = Array.isArray(res.data) ? res.data : [];
+      set({ sentRequests: list });
+      return list;
+    } catch (err) {
+      console.error('fetchSentContactRequests error:', err);
+      return [];
+    } finally {
+      set({ isLoadingRequests: false });
+    }
+  },
+
+  fetchConnections: async () => {
+    set({ isLoadingConnections: true });
+    try {
+      const res = await api.get('/messages/contacts/connections');
+      const list = Array.isArray(res.data) ? res.data : [];
+      set({ connections: list });
+      return list;
+    } catch (err) {
+      console.error('fetchConnections error:', err);
+      return [];
+    } finally {
+      set({ isLoadingConnections: false });
+    }
+  },
+
+  sendConnectionRequest: async (target) => {
+    try {
+      const payload = typeof target === 'object'
+        ? target
+        : target.includes('@') && !target.startsWith('@')
+          ? { email: target }
+          : /^[0-9a-fA-F]{24}$/.test(target)
+            ? { targetUserId: target }
+            : { username: target.replace(/^@+/, '') };
+
+      const res = await api.post('/messages/contacts/requests', payload);
+      const requestId = res.data.requestId || res.data.contactRequest?._id;
+      const targetUserId = res.data.contact?._id || payload.targetUserId;
+
+      set((state) => ({
+        userSearchResults: state.userSearchResults.map((u) => {
+          if (
+            (targetUserId && toIdString(u._id) === toIdString(targetUserId)) ||
+            (payload.username && u.username?.toLowerCase() === payload.username?.toLowerCase())
+          ) {
+            return { ...u, relationship: 'request_sent', requestId };
+          }
+          return u;
+        }),
+      }));
+
+      get().fetchSentContactRequests();
+      toast.success(translateCurrent(res.data.message || 'Connection request sent'));
+      return res.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to send connection request'));
+      throw err;
+    }
+  },
+
+  cancelConnectionRequest: async (requestId, targetUserId) => {
+    try {
+      const res = await api.delete(`/messages/contacts/requests/${requestId}/cancel`);
+
+      set((state) => ({
+        sentRequests: state.sentRequests.filter((req) => toIdString(req._id) !== toIdString(requestId)),
+        userSearchResults: state.userSearchResults.map((u) => {
+          if (
+            toIdString(u.requestId) === toIdString(requestId) ||
+            (targetUserId && toIdString(u._id) === toIdString(targetUserId))
+          ) {
+            return { ...u, relationship: 'none', requestId: null };
+          }
+          return u;
+        }),
+      }));
+
+      toast.success(translateCurrent(res.data.message || 'Connection request canceled'));
+      return res.data;
+    } catch (err) {
+      toast.error(translateCurrent(err.response?.data?.message || 'Failed to cancel request'));
+      throw err;
+    }
+  },
+
+  respondToContactRequest: async (requestId, accept, senderId) => {
     try {
       const response = accept
         ? await api.patch(`/messages/contacts/requests/${requestId}/accept`)
         : await api.delete(`/messages/contacts/requests/${requestId}`);
       set((state) => ({
         contactRequests: state.contactRequests.filter((request) => request._id !== requestId),
+        userSearchResults: state.userSearchResults.map((u) => {
+          if (
+            toIdString(u.requestId) === toIdString(requestId) ||
+            (senderId && toIdString(u._id) === toIdString(senderId))
+          ) {
+            return {
+              ...u,
+              relationship: accept ? 'connected' : 'none',
+              requestId: accept ? requestId : null,
+            };
+          }
+          return u;
+        }),
       }));
-      if (accept) await get().fetchUsers();
+      if (accept) {
+        await Promise.all([get().fetchUsers(), get().fetchConnections()]);
+      }
       toast.success(translateCurrent(response.data.message));
       return response.data;
     } catch (err) {
@@ -939,6 +1075,8 @@ fetchUsers: async () => {
       get().fetchUsers();
       get().fetchContactRequests();
       get().fetchMessageRequests();
+      get().fetchSentContactRequests();
+      get().fetchConnections();
     };
 
     // Auto-resync when connection recovers from brief disconnect
@@ -951,6 +1089,8 @@ fetchUsers: async () => {
       get().fetchUsers();
       get().fetchContactRequests();
       get().fetchMessageRequests();
+      get().fetchSentContactRequests();
+      get().fetchConnections();
     };
 
     const onNotification = ({ type, name }) => {
@@ -958,6 +1098,7 @@ fetchUsers: async () => {
         contactRequest: 'New contact request from {name}',
         messageRequest: 'New message request from {name}',
         contactAccepted: '{name} accepted your contact request',
+        contactDeclined: '{name} declined your connection request',
       };
       if (messages[type]) toast(translateCurrent(messages[type], { name }));
     };

@@ -82,6 +82,7 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
             className={user.profilePic ? 'cursor-zoom-in' : ''}
           />
           <h2 className="mt-3 text-xl font-bold">{user.fullName}</h2>
+          {user.username && <p className="text-sm font-semibold text-primary">@{user.username}</p>}
           <p className={`text-sm ${isOnline ? 'text-success font-medium' : 'text-base-content/60'}`}>
             {isOnline ? t('Online') : formatLastSeenDetailed(user.lastSeen, language, t)}
           </p>

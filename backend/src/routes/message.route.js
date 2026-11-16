@@ -1,9 +1,15 @@
 import express from 'express';
 import {
   getUsers,
+  searchUsers,
   searchContact,
   addContact,
+  sendContactRequest,
   getContactRequests,
+  getSentContactRequests,
+  cancelContactRequest,
+  getConnections,
+  getRelationshipStatus,
   getMessageRequests,
   getMessageRequestMessages,
   respondToMessageRequest,
@@ -28,9 +34,15 @@ import { protectRoute } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
+router.get('/users/search', protectRoute, searchUsers);
 router.get('/users', protectRoute, getUsers);
 router.get('/contacts/search', protectRoute, searchContact);
+router.get('/contacts/connections', protectRoute, getConnections);
+router.get('/contacts/requests/sent', protectRoute, getSentContactRequests);
 router.get('/contacts/requests', protectRoute, getContactRequests);
+router.post('/contacts/requests', protectRoute, sendContactRequest);
+router.delete('/contacts/requests/:requestId/cancel', protectRoute, cancelContactRequest);
+router.get('/contacts/status/:userId', protectRoute, getRelationshipStatus);
 router.get('/contacts/message-requests', protectRoute, getMessageRequests);
 router.get('/contacts/message-requests/:userId/messages', protectRoute, getMessageRequestMessages);
 router.patch('/contacts/message-requests/:userId', protectRoute, respondToMessageRequest);
