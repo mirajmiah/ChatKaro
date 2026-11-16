@@ -213,7 +213,9 @@ export default function Sidebar() {
     ? users.filter((user) => onlineUsers.includes(String(user._id)))
     : users;
 
-  const totalUnreadChats = users.reduce((sum, u) => sum + (u.unreadCount || 0), 0);
+  const totalUnreadChats = users.reduce((sum, u) => (
+    sum + (String(selectedUser?._id) === String(u._id) ? 0 : (u.unreadCount || 0))
+  ), 0);
   const totalPendingReceived = contactRequests.length;
 
   return (
@@ -227,8 +229,8 @@ export default function Sidebar() {
               {activeTab === 'chats' ? t('Chats') : activeTab === 'discover' ? t('Discover') : t('Requests')}
             </h2>
           </div>
-          {activeTab === 'chats' && visibleUsers.length > 0 && (
-            <span className="badge badge-primary badge-sm">{visibleUsers.length}</span>
+          {activeTab === 'chats' && totalUnreadChats > 0 && (
+            <span className="badge badge-primary badge-sm">{totalUnreadChats}</span>
           )}
         </div>
 
@@ -470,7 +472,7 @@ export default function Sidebar() {
                               <span className="truncate">{latestMessage ? `${messagePrefix}${messagePreview}` : t(isOnline ? 'Online' : 'Offline')}</span>
                             </p>
                           )}
-                          {user.unreadCount > 0 && (
+                          {!isSelected && user.unreadCount > 0 && (
                             <span className="badge badge-primary badge-sm min-w-5 shrink-0">
                               {user.unreadCount > 99 ? '99+' : user.unreadCount}
                             </span>

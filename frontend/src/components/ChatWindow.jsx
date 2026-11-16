@@ -22,7 +22,7 @@ function BubbleSkeleton({ align = 'start' }) {
 }
 
 export default function ChatWindow() {
-  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, toggleReaction } = useChatStore();
+  const { selectedUser, messages, users, typingUsers, isLoadingMessages, fetchMessages, markMessagesRead, editMessage, deleteMessage, toggleStarMessage, togglePinMessage, forwardMessage, toggleReaction } = useChatStore();
   const { authUser } = useAuthStore();
   const { t } = useTranslation();
   const bottomRef = useRef(null);
@@ -39,9 +39,16 @@ export default function ChatWindow() {
   );
 
   useEffect(() => {
-    if (!selectedUser) return;
+    if (!selectedUser?._id) return;
     fetchMessages(selectedUser._id);
-  }, [selectedUser?._id]);
+    markMessagesRead(selectedUser._id);
+
+    const handleFocus = () => {
+      markMessagesRead(selectedUser._id);
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [selectedUser?._id, fetchMessages, markMessagesRead]);
 
   const messagesContainerRef = useRef(null);
   const isInitialLoadRef = useRef(true);

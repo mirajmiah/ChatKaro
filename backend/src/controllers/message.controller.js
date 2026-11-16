@@ -15,7 +15,7 @@ const EDIT_WINDOW_MS = 15 * 60 * 1000;
 const DELETE_WINDOW_MS = 4 * 60 * 60 * 1000;
 const REPLY_PREVIEW_FIELDS = 'text image video audio audioDuration document documentName senderId deletedAt';
 
-class AttachmentValidationError extends Error {}
+class AttachmentValidationError extends Error { }
 
 const serializeMessage = (message, userId) => {
   const serialized = typeof message.toObject === 'function' ? message.toObject() : { ...message };
@@ -159,7 +159,7 @@ export const getUsers = async (req, res) => {
         {
           $match: {
             receiverId: req.user._id,
-            read: false,
+            read: { $ne: true },
             messageRequestStatus: { $ne: 'pending' },
             deletedAt: { $exists: false },
             deletedFor: { $ne: req.user._id },
@@ -323,7 +323,6 @@ export const searchUsers = async (req, res) => {
       $or: [
         { username: regex },
         { fullName: regex },
-        { email: regex },
       ],
     })
       .select('fullName username profilePic bio lastSeen')
@@ -694,9 +693,9 @@ export const respondToMessageRequest = async (req, res) => {
       accept
         ? { $set: { messageRequestStatus: 'accepted' } }
         : {
-            $set: { messageRequestStatus: 'declined' },
-            $addToSet: { deletedFor: req.user._id },
-          }
+          $set: { messageRequestStatus: 'declined' },
+          $addToSet: { deletedFor: req.user._id },
+        }
     );
 
     if (accept) {
@@ -907,6 +906,22 @@ export const getMessages = async (req, res) => {
       { $unset: { pinnedAt: 1, pinnedUntil: 1, pinnedBy: 1 } }
     );
 
+    // Mark messages from target to current user as read before querying so returned messages are up to date
+    const readResult = await Message.updateMany(
+      {
+        senderId: targetId,
+        receiverId: myId,
+        read: { $ne: true },
+        messageRequestStatus: { $ne: 'pending' },
+        deletedFor: { $ne: myId },
+      },
+      { $set: { read: true, delivered: true } }
+    );
+    if (readResult.modifiedCount > 0) {
+      emitToUser(myId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: targetId.toString() });
+      emitToUser(targetId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: targetId.toString() });
+    }
+
     const messages = await Message.find({
       deletedFor: { $ne: myId },
       $and: [
@@ -921,20 +936,6 @@ export const getMessages = async (req, res) => {
     })
       .populate('replyTo', REPLY_PREVIEW_FIELDS)
       .sort({ createdAt: 1 });
-
-    const readResult = await Message.updateMany(
-      {
-        senderId: targetId,
-        receiverId: myId,
-        read: false,
-        messageRequestStatus: { $ne: 'pending' },
-      },
-      { $set: { read: true, delivered: true } }
-    );
-    if (readResult.modifiedCount > 0) {
-      emitToUser(myId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: targetId.toString() });
-      emitToUser(targetId.toString(), 'messagesRead', { readerId: myId.toString(), senderId: targetId.toString() });
-    }
 
     return res.status(200).json(messages.map((message) => serializeMessage(message, myId)));
   } catch (error) {
@@ -1105,17 +1106,16 @@ export const markMessagesRead = async (req, res) => {
   try {
     const myId = req.user._id;
     const senderId = req.params.userId;
-    if (!mongoose.isValidObjectId(senderId) || !(await werePreviouslyConnected(myId, senderId))) {
-      return res.status(403).json({ message: 'You can only mark a contact conversation as read.' });
+    if (!mongoose.isValidObjectId(senderId)) {
+      return res.status(400).json({ message: 'Invalid user ID.' });
     }
 
     const result = await Message.updateMany(
       {
         senderId,
         receiverId: myId,
-        read: false,
+        read: { $ne: true },
         messageRequestStatus: { $ne: 'pending' },
-        deletedAt: { $exists: false },
         deletedFor: { $ne: myId },
       },
       { $set: { read: true, delivered: true } }
@@ -1284,8 +1284,8 @@ export const sendMessage = async (req, res) => {
           message: document
             ? 'Documents must be 10 MB or smaller.'
             : audio
-            ? 'Voice notes must be 10 MB or smaller.'
-            : 'Images and videos must be 10 MB or smaller.',
+              ? 'Voice notes must be 10 MB or smaller.'
+              : 'Images and videos must be 10 MB or smaller.',
         });
       }
 
@@ -1300,9 +1300,9 @@ export const sendMessage = async (req, res) => {
       const uploadResult = document
         ? await uploadRawDocument(document, documentName.trim())
         : await cloudinary.uploader.upload(media, {
-            folder: 'nexus-chat/messages',
-            resource_type: image ? 'image' : 'video',
-          });
+          folder: 'nexus-chat/messages',
+          resource_type: image ? 'image' : 'video',
+        });
 
       if (image) {
         imageUrl = uploadResult.secure_url;

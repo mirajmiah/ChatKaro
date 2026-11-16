@@ -107,12 +107,23 @@ fetchUsers: async () => {
         const selectedStillMutual = users.some((user) => toIdString(user._id) === toIdString(currentSelected._id));
         currentSelected = selectedStillMutual ? currentSelected : null;
       }
+
+      const selectedId = toIdString(currentSelected?._id);
+      const adjustedUsers = selectedId
+        ? users.map((u) => toIdString(u._id) === selectedId ? { ...u, unreadCount: 0 } : u)
+        : users;
+
       return {
-        users,
-        selectedUser: currentSelected,
+        users: adjustedUsers,
+        selectedUser: currentSelected ? { ...currentSelected, unreadCount: 0 } : null,
         messages: currentSelected ? state.messages : [],
       };
     });
+
+    const activeId = toIdString(get().selectedUser?._id);
+    if (activeId) {
+      get().markMessagesRead(activeId);
+    }
   } catch (err) {
     toast.error(translateCurrent(err.response?.data?.message || 'Failed to load users'));
   } finally {
@@ -534,13 +545,27 @@ fetchUsers: async () => {
         status: 'pending',
       }));
 
-    set({ selectedUser: user, messages: pendingForUser });
+    if (targetId) {
+      get().clearUnreadCount(targetId);
+      get().markMessagesRead(targetId);
+    }
+
+    set((state) => ({
+      selectedUser: user ? { ...user, unreadCount: 0 } : null,
+      messages: pendingForUser,
+      users: targetId
+        ? state.users.map((u) => toIdString(u._id) === targetId ? { ...u, unreadCount: 0 } : u)
+        : state.users,
+    }));
   },
 
   fetchMessages: async (userId) => {
     const targetId = toIdString(userId);
     set({ isLoadingMessages: true });
     try {
+      get().clearUnreadCount(targetId);
+      get().markMessagesRead(targetId);
+
       const res = await api.get(`/messages/${targetId}`);
       const serverMessages = Array.isArray(res.data) ? res.data : [];
       set((state) => {
@@ -560,6 +585,10 @@ fetchUsers: async () => {
         return {
           messages: dedupeMessages([...serverMessages, ...pendingSocketMessages, ...pendingMessages]),
           isLoadingMessages: false,
+          users: state.users.map((u) => toIdString(u._id) === targetId ? { ...u, unreadCount: 0 } : u),
+          selectedUser: state.selectedUser && toIdString(state.selectedUser._id) === targetId
+            ? { ...state.selectedUser, unreadCount: 0 }
+            : state.selectedUser,
         };
       });
     } catch (err) {
@@ -571,9 +600,10 @@ fetchUsers: async () => {
 
   markMessagesRead: async (userId) => {
     const targetId = toIdString(userId);
+    if (!targetId) return;
+    get().clearUnreadCount(targetId);
     try {
       await api.patch(`/messages/${targetId}/read`);
-      get().clearUnreadCount(targetId);
     } catch (err) {
       // Background operation; avoid alarming user if already read
       console.warn('markMessagesRead error:', err.message);
@@ -655,7 +685,7 @@ fetchUsers: async () => {
           ? {
               ...user,
               latestMessage: message,
-              unreadCount: Math.max(0, (user.unreadCount || 0) + (isIncoming && !isConversationOpen ? 1 : 0)),
+              unreadCount: isConversationOpen ? 0 : Math.max(0, (user.unreadCount || 0) + (isIncoming ? 1 : 0)),
             }
           : user))
         : state.users;
@@ -686,6 +716,9 @@ fetchUsers: async () => {
       users: state.users.map((user) => toIdString(user._id) === id
         ? { ...user, unreadCount: 0 }
         : user),
+      selectedUser: toIdString(state.selectedUser?._id) === id
+        ? { ...state.selectedUser, unreadCount: 0 }
+        : state.selectedUser,
     }));
   },
 
@@ -719,6 +752,9 @@ fetchUsers: async () => {
 
     const tempId = data.clientMessageId || `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const clientMessageId = tempId;
+
+    get().clearUnreadCount(targetId);
+    get().markMessagesRead(targetId);
 
     // Idempotency: if already in flight, do not duplicate
     if (inFlightSends.has(clientMessageId)) {
@@ -761,7 +797,7 @@ fetchUsers: async () => {
         users: sortByLatestMessage(
           state.users.map((user) =>
             toIdString(user._id) === targetId
-              ? { ...user, latestMessage: tempMessage }
+              ? { ...user, latestMessage: tempMessage, unreadCount: 0 }
               : user
           )
         ),
@@ -1062,12 +1098,20 @@ fetchUsers: async () => {
     const onMessagesRead = ({ readerId, senderId }) => {
       const readerStr = toIdString(readerId);
       const senderStr = toIdString(senderId);
+      const myId = toIdString(useAuthStore.getState().authUser?._id);
+
       set((state) => ({
         messages: state.messages.map((item) =>
           (toIdString(item.senderId) === senderStr && toIdString(item.receiverId) === readerStr)
             ? { ...item, read: true, delivered: true }
             : item
         ),
+        users: readerStr === myId
+          ? state.users.map((u) => toIdString(u._id) === senderStr ? { ...u, unreadCount: 0 } : u)
+          : state.users,
+        selectedUser: (readerStr === myId && state.selectedUser && toIdString(state.selectedUser._id) === senderStr)
+          ? { ...state.selectedUser, unreadCount: 0 }
+          : state.selectedUser,
       }));
     };
 
