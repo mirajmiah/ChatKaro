@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Smartphone, Laptop, Download, X, CheckCircle2 } from 'lucide-react';
+import { Download, X, CheckCircle2 } from 'lucide-react';
 import { useInstallStore } from '../store/useInstallStore.js';
 import { useTranslation } from '../lib/i18n.js';
 
@@ -23,33 +23,21 @@ export default function InstallPrompt() {
 
   return (
     <>
-      {/* Top Banner / Message Pop-up for App Installation (Mobile & PC) */}
+      {/* Top Banner / Message Pop-up for App Installation */}
       {showTopBanner && (
         <aside
           role="region"
-          aria-label={t('Install App Banner')}
-          className="relative z-40 border-b border-primary/30 bg-base-200/95 px-3 py-2.5 text-base-content shadow-md backdrop-blur-md transition-all duration-300 sm:px-4"
+          aria-label={t('Install App')}
+          className="relative z-40 border-b border-primary/30 bg-base-200/95 px-3 py-2 text-base-content shadow-sm backdrop-blur-md transition-all duration-300 sm:px-4"
         >
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-content shadow-sm">
-                {isMobile ? <Smartphone size={19} strokeWidth={2.2} /> : <Laptop size={19} strokeWidth={2.2} />}
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-content shadow-sm">
+                <Download size={17} strokeWidth={2.4} />
               </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold tracking-tight sm:text-base">
-                    {t('Install ChatKaro App')}
-                  </h3>
-                  <span className="badge badge-primary badge-xs hidden font-medium uppercase tracking-wider sm:inline-flex">
-                    {isMobile ? t('Mobile') : t('Desktop')}
-                  </span>
-                </div>
-                <p className="hidden text-xs opacity-75 md:block">
-                  {isMobile
-                    ? t('Add to your home screen for fast access and real-time messaging.')
-                    : t('Install for instant access, desktop notifications, and a dedicated app window.')}
-                </p>
-              </div>
+              <h3 className="text-sm font-semibold tracking-tight">
+                {t('Install App')}
+              </h3>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
@@ -96,20 +84,11 @@ export default function InstallPrompt() {
 
             <div className="bg-gradient-to-br from-primary/20 via-base-100 to-secondary/20 px-6 pb-4 pt-7 text-center">
               <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-content shadow-lg">
-                {isMobile ? (
-                  <Smartphone size={32} strokeWidth={2.2} />
-                ) : (
-                  <Laptop size={32} strokeWidth={2.2} />
-                )}
+                <Download size={32} strokeWidth={2.2} />
               </div>
               <h2 id="install-guide-title" className="text-xl font-bold">
-                {t('Install ChatKaro App')}
+                {t('Install App')}
               </h2>
-              <p className="mt-1 text-xs opacity-75">
-                {isMobile
-                  ? t('Add ChatKaro to your phone home screen for quick, full-screen access.')
-                  : t('Run ChatKaro as a standalone app on your PC or Mac.')}
-              </p>
             </div>
 
             <div className="space-y-3 px-6 pb-6 pt-3">
