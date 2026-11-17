@@ -14,6 +14,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import Navbar from './components/Navbar.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
+import UsernameSetupModal from './components/UsernameSetupModal.jsx';
 import { initAutoUpdater, checkForUpdates } from './lib/autoUpdater.js';
 
 const Loader = () => (
@@ -64,6 +65,7 @@ export default function App() {
   return (
     <div className={authUser && location.pathname === '/' ? 'app-authenticated-layout flex flex-col' : 'min-h-screen flex flex-col'}>
       <InstallPrompt />
+      <UsernameSetupModal />
       {authUser && <Navbar />}
       <Routes>
         <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" replace />} />

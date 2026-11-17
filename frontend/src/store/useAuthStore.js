@@ -194,6 +194,7 @@ export const useAuthStore = create((set, get) => ({
         authUser: {
           ...state.authUser,
           username: res.data.username,
+          needsUsername: false,
         },
       }));
       toast.success(translateCurrent('Username updated'));

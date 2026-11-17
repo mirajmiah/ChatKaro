@@ -417,6 +417,13 @@ const TRANSLATIONS = {
     'Username can only contain letters, numbers, underscores (_), and periods (.).': 'ইউজারনেমে কেবল অক্ষর, সংখ্যা, আন্ডারস্কোর (_) এবং ডট (.) ব্যবহার করা যাবে।',
     '{name} declined your connection request': '{name} আপনার সংযোগের অনুরোধ প্রত্যাখ্যান করেছেন',
     'Switch to the Discover tab to search for people by @username and connect with them.': '@username দিয়ে মানুষ খুঁজতে এবং সংযোগ করতে Discover ট্যাবে যান।',
+    'Choose a unique username so friends can discover and connect with you on Talksy.': 'বন্ধুদের সঙ্গে যুক্ত হতে এবং আপনাকে সহজে খুঁজে পেতে একটি ইউনিক ইউজারনেম বেছে নিন।',
+    'Suggested for you:': 'আপনার জন্য প্রস্তাবিত:',
+    'Continue to Talksy': 'Talksy-তে এগিয়ে যান',
+    'Setting up username...': 'ইউজারনেম সেট করা হচ্ছে...',
+    'Not you? Log out': 'আপনি নন? লগআউট করুন',
+    '1-30 characters, letters, numbers, underscores, and dots.': '১-৩০ অক্ষর, সংখ্যা, আন্ডারস্কোর এবং ডট।',
+    'Username is not available.': 'ইউজারনেমটি খালি নেই।',
   },
   hi: {
     'Chats': 'चैट',
@@ -827,6 +834,13 @@ const TRANSLATIONS = {
     'Username can only contain letters, numbers, underscores (_), and periods (.).': 'यूज़रनेम में केवल अक्षर, संख्याएं, अंडरस्कोर (_) और डॉट्स (.) हो सकते हैं।',
     '{name} declined your connection request': '{name} ने आपका कनेक्शन अनुरोध अस्वीकार कर दिया',
     'Switch to the Discover tab to search for people by @username and connect with them.': '@username द्वारा लोगों को खोजने और उनसे जुड़ने के लिए Discover टैब पर जाएं।',
+    'Choose a unique username so friends can discover and connect with you on Talksy.': 'दोस्तों से जुड़ने और आसानी से पहचाने जाने के लिए एक अनोखा यूज़रनेम चुनें।',
+    'Suggested for you:': 'आपके लिए सुझाव:',
+    'Continue to Talksy': 'Talksy में आगे बढ़ें',
+    'Setting up username...': 'यूज़रनेम सेट किया जा रहा है...',
+    'Not you? Log out': 'आप नहीं हैं? लॉग आउट करें',
+    '1-30 characters, letters, numbers, underscores, and dots.': '1-30 अक्षर, संख्याएँ, अंडरस्कोर और डॉट्स।',
+    'Username is not available.': 'यह यूज़रनेम उपलब्ध नहीं है।',
   },
 };
 

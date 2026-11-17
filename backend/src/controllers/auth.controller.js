@@ -195,6 +195,7 @@ export const verifySignupOtp = async (req, res) => {
       _id: user._id,
       fullName: user.fullName,
       username: user.username,
+      needsUsername: Boolean(user.needsUsername),
       email: user.email,
       profilePic: user.profilePic,
       bio: user.bio,
@@ -331,6 +332,7 @@ export const verifyLoginOtp = async (req, res) => {
       _id: user._id,
       fullName: user.fullName,
       username: user.username,
+      needsUsername: Boolean(user.needsUsername),
       email: user.email,
       profilePic: user.profilePic,
       bio: user.bio,
@@ -409,8 +411,10 @@ export const googleLogin = async (req, res) => {
       user = await User.create({
         fullName: payload.name || email.split('@')[0],
         username: autoUsername,
+        needsUsername: true,
         email,
         googleId: payload.sub,
+        emailVerified: true,
         profilePic: payload.picture || '',
         password: await bcryptjs.hash(crypto.randomBytes(32).toString('hex'), 12),
       });
@@ -420,6 +424,7 @@ export const googleLogin = async (req, res) => {
           const count = await User.countDocuments({ username: cand, _id: { $ne: user._id } });
           return count > 0;
         });
+        user.needsUsername = true;
       }
       if (user.googleId && user.googleId !== payload.sub) {
         return res.status(409).json({ message: 'This account is linked to another Google account.' });
@@ -442,6 +447,7 @@ export const googleLogin = async (req, res) => {
       _id: user._id,
       fullName: user.fullName,
       username: user.username,
+      needsUsername: Boolean(user.needsUsername),
       email: user.email,
       profilePic: user.profilePic,
       bio: user.bio,
@@ -466,7 +472,8 @@ export const checkAuth = async (req, res) => {
       return count > 0;
     });
     req.user.username = autoUsername;
-    await User.findByIdAndUpdate(req.user._id, { username: autoUsername });
+    req.user.needsUsername = true;
+    await User.findByIdAndUpdate(req.user._id, { username: autoUsername, needsUsername: true });
   }
   return res.status(200).json(req.user);
 };
@@ -704,12 +711,20 @@ export const checkUsernameAvailability = async (req, res) => {
       });
     }
 
+    let suggestions = [];
+    if (req.query.suggest === 'true') {
+      suggestions = await generateUsernameSuggestions(normalized, async (cand) => {
+        const count = await User.countDocuments({ username: cand, emailVerified: true });
+        return count > 0;
+      });
+    }
+
     return res.status(200).json({
       available: true,
       valid: true,
       normalized,
       message: 'Username is available!',
-      suggestions: [],
+      suggestions,
     });
   } catch (error) {
     console.error('checkUsernameAvailability error:', error.message);
@@ -738,7 +753,7 @@ export const updateUsername = async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { username: normalized },
+      { username: normalized, needsUsername: false },
       { new: true }
     ).select('-password');
 
