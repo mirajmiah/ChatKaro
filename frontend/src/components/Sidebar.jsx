@@ -107,7 +107,11 @@ export default function Sidebar() {
 
   const handleSelectUser = (user) => {
     setOpenChatMenu(null);
-    selectUser(user);
+    if (selectedUser?._id === user._id) {
+      selectUser(null);
+    } else {
+      selectUser(user);
+    }
     setActiveTab('chats');
   };
 

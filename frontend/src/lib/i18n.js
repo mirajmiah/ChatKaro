@@ -424,6 +424,8 @@ const TRANSLATIONS = {
     'Not you? Log out': 'আপনি নন? লগআউট করুন',
     '1-30 characters, letters, numbers, underscores, and dots.': '১-৩০ অক্ষর, সংখ্যা, আন্ডারস্কোর এবং ডট।',
     'Username is not available.': 'ইউজারনেমটি খালি নেই।',
+    'Close chat': 'চ্যাট বন্ধ করুন',
+    'Back to contacts': 'কন্ট্যাক্ট তালিকায় ফিরুন',
   },
   hi: {
     'Chats': 'चैट',
@@ -841,6 +843,8 @@ const TRANSLATIONS = {
     'Not you? Log out': 'आप नहीं हैं? लॉग आउट करें',
     '1-30 characters, letters, numbers, underscores, and dots.': '1-30 अक्षर, संख्याएँ, अंडरस्कोर और डॉट्स।',
     'Username is not available.': 'यह यूज़रनेम उपलब्ध नहीं है।',
+    'Close chat': 'चैट बंद करें',
+    'Back to contacts': 'संपर्कों पर वापस जाएँ',
   },
 };
 

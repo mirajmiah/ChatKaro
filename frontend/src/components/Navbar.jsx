@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, ChevronDown, UserRound, Languages, Palette, BookOpen, Code2, LogOut, Download } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useChatStore } from '../store/useChatStore.js';
 import { useInstallStore } from '../store/useInstallStore.js';
 import { useTranslation } from '../lib/i18n.js';
 import Logo from './Logo.jsx';
@@ -53,7 +54,12 @@ export default function Navbar() {
   return (
     <nav className="navbar app-navbar sticky top-0 z-50 border-b border-base-300 bg-base-200 px-3 sm:px-4">
       <div className="flex-1">
-        <Link to="/" className="group inline-flex items-center gap-2.5" aria-label={t('Talksy Home')}>
+        <Link
+          to="/"
+          onClick={() => useChatStore.getState().selectUser(null)}
+          className="group inline-flex items-center gap-2.5"
+          aria-label={t('Talksy Home')}
+        >
           <Logo className="h-8 w-8 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-3deg]" />
           <div className="flex items-center tracking-tight">
             <span className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent drop-shadow-sm select-none">

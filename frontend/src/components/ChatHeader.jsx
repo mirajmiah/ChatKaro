@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, Info, Phone, Video } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Info, Phone, Video, X } from 'lucide-react';
 import { useChatStore } from '../store/useChatStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import ChatDetailsModal from './ChatDetailsModal.jsx';
@@ -13,6 +13,17 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
   const { language, t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
 
+  // Allow pressing Escape key to exit the current chat
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !showDetails) {
+        selectUser(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDetails, selectUser]);
+
   if (!selectedUser) return null;
 
   const isOnline = onlineUsers.includes(String(selectedUser._id));
@@ -20,11 +31,13 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
 
   return (
     <div className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b border-base-300 bg-base-200/85 backdrop-blur-md px-4 py-3">
-      {/* Back button — mobile only */}
+      {/* Back button — visible on mobile and desktop */}
       <button
+        type="button"
         onClick={() => selectUser(null)}
-        className="md:hidden btn btn-ghost btn-sm btn-circle"
+        className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content hover:bg-base-300"
         aria-label={t('Back to contacts')}
+        title={t('Back to contacts')}
       >
         <ArrowLeft size={20} />
       </button>
@@ -60,21 +73,32 @@ export default function ChatHeader({ messages, onJumpToMessage }) {
         <Info size={17} className="mr-1 shrink-0 text-base-content/50" />
       </button>
 
-      {/* Actions (decorative for now) */}
-      <div className="hidden items-center gap-1 ml-auto sm:flex">
+      {/* Actions */}
+      <div className="flex items-center gap-1 ml-auto">
         <button
-          className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
+          className="hidden sm:inline-flex btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
           aria-label={t('Voice call (coming soon)')}
           disabled
         >
           <Phone size={18} />
         </button>
         <button
-          className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
+          className="hidden sm:inline-flex btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-base-content"
           aria-label={t('Video call (coming soon)')}
           disabled
         >
           <Video size={18} />
+        </button>
+
+        {/* Close chat button */}
+        <button
+          type="button"
+          onClick={() => selectUser(null)}
+          className="btn btn-ghost btn-sm btn-circle text-base-content/60 hover:text-error hover:bg-error/10 transition-colors"
+          aria-label={t('Close chat')}
+          title={t('Close chat')}
+        >
+          <X size={20} />
         </button>
       </div>
       {showDetails && (
