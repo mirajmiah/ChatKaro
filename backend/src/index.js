@@ -92,12 +92,12 @@ const serveApk = (filename) => (_req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     return res.download(apkPath, filename, (err) => {
       if (err && !res.headersSent) {
-        res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/Talksy.apk');
+        res.redirect(302, 'https://github.com/mirajmiah/Talksy/releases/latest/download/Talksy.apk');
       }
     });
   }
 
-  res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/Talksy.apk');
+  res.redirect(302, 'https://github.com/mirajmiah/Talksy/releases/latest/download/Talksy.apk');
 };
 
 app.get('/download/Talksy.apk', serveApk('Talksy.apk'));
