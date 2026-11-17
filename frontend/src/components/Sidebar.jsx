@@ -451,11 +451,6 @@ export default function Sidebar() {
                             </span>
                           ) : null}
                         </div>
-                        {user.username && (
-                          <p className="text-[11px] text-primary/80 font-medium truncate -mt-0.5">
-                            @{user.username}
-                          </p>
-                        )}
                         <div className="mt-0.5 flex min-w-0 items-center justify-between gap-2">
                           {isUserTyping ? (
                             <p className="flex items-center gap-1.5 truncate text-xs font-medium text-primary animate-pulse">

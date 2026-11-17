@@ -154,7 +154,7 @@ export const getUsers = async (req, res) => {
     const contactObjectIds = [...contactIds].map((id) => new mongoose.Types.ObjectId(id));
     const [users, unreadCounts, latestMessages] = await Promise.all([
       User.find({ _id: { $in: [...contactIds] } })
-        .select('fullName username email profilePic bio lastSeen'),
+        .select('fullName username profilePic bio lastSeen'),
       Message.aggregate([
         {
           $match: {
@@ -236,7 +236,7 @@ export const searchContact = async (req, res) => {
 
     const contact = await User.findOne({
       $or: [{ username: query }, { email: query }],
-    }).select('fullName username email profilePic bio lastSeen contacts');
+    }).select('fullName username profilePic bio lastSeen contacts');
 
     if (!contact) return res.status(404).json({ message: 'No account was found with that username or email.' });
     if (contact._id.toString() === req.user._id.toString()) {
@@ -256,7 +256,7 @@ export const searchContact = async (req, res) => {
       ],
     }).select('sender recipient status');
 
-    const { contacts: _contacts, ...publicContact } = contact.toObject();
+    const { contacts: _contacts, email: _email, ...publicContact } = contact.toObject();
 
     if (wasConnected) {
       return res.status(200).json({
@@ -402,12 +402,12 @@ export const addContact = async (req, res) => {
     let contact = null;
 
     if (targetUserId && mongoose.isValidObjectId(targetUserId)) {
-      contact = await User.findById(targetUserId).select('fullName username email profilePic lastSeen');
+      contact = await User.findById(targetUserId).select('fullName username profilePic lastSeen');
     } else if (username && typeof username === 'string') {
       const cleanUsername = username.trim().replace(/^@+/, '').toLowerCase();
-      contact = await User.findOne({ username: cleanUsername, emailVerified: true }).select('fullName username email profilePic lastSeen');
+      contact = await User.findOne({ username: cleanUsername, emailVerified: true }).select('fullName username profilePic lastSeen');
     } else if (email && typeof email === 'string') {
-      contact = await User.findOne({ email: email.trim().toLowerCase() }).select('fullName username email profilePic lastSeen');
+      contact = await User.findOne({ email: email.trim().toLowerCase() }).select('fullName username profilePic lastSeen');
     }
 
     if (!contact) return res.status(404).json({ message: 'User not found.' });
@@ -480,7 +480,7 @@ export const getContactRequests = async (req, res) => {
       recipient: req.user._id,
       status: 'pending',
     })
-      .populate('sender', 'fullName username email profilePic bio')
+      .populate('sender', 'fullName username profilePic bio')
       .sort({ createdAt: -1 });
     return res.status(200).json(requests);
   } catch (error) {
@@ -495,7 +495,7 @@ export const getSentContactRequests = async (req, res) => {
       sender: req.user._id,
       status: 'pending',
     })
-      .populate('recipient', 'fullName username email profilePic bio')
+      .populate('recipient', 'fullName username profilePic bio')
       .sort({ createdAt: -1 });
     return res.status(200).json(requests);
   } catch (error) {
@@ -558,7 +558,7 @@ export const getConnections = async (req, res) => {
     contactIds.delete(req.user._id.toString());
 
     const connections = await User.find({ _id: { $in: [...contactIds] } })
-      .select('fullName username email profilePic bio lastSeen')
+      .select('fullName username profilePic bio lastSeen')
       .sort({ fullName: 1 });
 
     return res.status(200).json(connections);

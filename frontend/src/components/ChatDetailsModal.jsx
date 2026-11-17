@@ -83,10 +83,9 @@ export default function ChatDetailsModal({ user, messages, isOnline, onClose, on
           />
           <h2 className="mt-3 text-xl font-bold">{user.fullName}</h2>
           {user.username && <p className="text-sm font-semibold text-primary">@{user.username}</p>}
-          <p className={`text-sm ${isOnline ? 'text-success font-medium' : 'text-base-content/60'}`}>
+          <p className={`mt-1 text-xs ${isOnline ? 'text-success font-medium' : 'text-base-content/60'}`}>
             {isOnline ? t('Online') : formatLastSeenDetailed(user.lastSeen, language, t)}
           </p>
-          {user.email && <p className="mt-1 text-sm text-base-content/60">{user.email}</p>}
           {user.bio && (
             <p className="mt-3 max-w-lg whitespace-pre-wrap text-center text-sm leading-relaxed text-base-content/70">
               {user.bio}
