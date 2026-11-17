@@ -1045,19 +1045,19 @@ export const downloadMessageMedia = async (req, res) => {
 
     if (type === 'video' || (!type && message.video)) {
       mediaUrl = message.video;
-      fileName = `chatkaro_video_${dateStr}_${shortId}.mp4`;
+      fileName = `talksy_video_${dateStr}_${shortId}.mp4`;
       defaultContentType = 'video/mp4';
     } else if (type === 'image' || (!type && message.image)) {
       mediaUrl = message.image;
-      fileName = `chatkaro_image_${dateStr}_${shortId}.jpg`;
+      fileName = `talksy_image_${dateStr}_${shortId}.jpg`;
       defaultContentType = 'image/jpeg';
     } else if (type === 'audio' || (!type && message.audio)) {
       mediaUrl = message.audio;
-      fileName = `chatkaro_voice_${dateStr}_${shortId}.webm`;
+      fileName = `talksy_voice_${dateStr}_${shortId}.webm`;
       defaultContentType = 'audio/webm';
     } else if (type === 'document' || (!type && message.document)) {
       mediaUrl = message.document;
-      fileName = message.documentName || `chatkaro_doc_${dateStr}_${shortId}`;
+      fileName = message.documentName || `talksy_doc_${dateStr}_${shortId}`;
       defaultContentType = 'application/octet-stream';
     }
 

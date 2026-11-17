@@ -5,7 +5,7 @@ async function main() {
   const recipient = process.argv[2] || 'mirajmiah322173@gmail.com';
   const user = (process.env.GMAIL_USER || process.env.SMTP_USER || '').trim();
 
-  console.log('\n--- ChatKaro Email Delivery Test ---');
+  console.log('\n--- Talksy Email Delivery Test ---');
   console.log(`Provider : Google Gmail API (HTTPS Port 443)`);
   console.log(`Sender   : ${user}`);
   console.log(`Recipient: ${recipient}`);

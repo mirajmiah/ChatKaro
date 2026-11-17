@@ -52,7 +52,7 @@ class MainActivity : Activity() {
         settings.mediaPlaybackRequiresUserGesture = false
         settings.cacheMode = WebSettings.LOAD_DEFAULT
         val defaultUserAgent = settings.userAgentString ?: ""
-        settings.userAgentString = "$defaultUserAgent ChatKaroAndroidApp/1.0"
+        settings.userAgentString = "$defaultUserAgent TalksyAndroidApp/1.0 ChatKaroAndroidApp/1.0"
 
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
@@ -61,8 +61,9 @@ class MainActivity : Activity() {
         wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
-                // Keep ChatKaro and Google authentication inside the app WebView
+                // Keep Talksy and Google authentication inside the app WebView
                 if (url.startsWith(appUrl) ||
+                    url.startsWith("https://talksy") ||
                     url.startsWith("https://chatkaro") ||
                     url.contains("accounts.google.com") ||
                     url.contains("google.com/oauth")

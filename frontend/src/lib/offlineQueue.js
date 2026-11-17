@@ -1,4 +1,4 @@
-const DB_NAME = 'ChatKaroOfflineDB';
+const DB_NAME = 'TalksyOfflineDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'offline_messages';
 

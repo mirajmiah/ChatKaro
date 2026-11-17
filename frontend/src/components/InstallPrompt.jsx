@@ -151,7 +151,7 @@ export default function InstallPrompt() {
                       <div>
                         <strong className="font-semibold text-sm block">2. {t('Browser Menu')}</strong>
                         <span className="opacity-80">
-                          {t('Or click browser menu (⋮) → "Save and share" / "Apps" → "Install ChatKaro".')}
+                          {t('Or click browser menu (⋮) → "Save and share" / "Apps" → "Install Talksy".')}
                         </span>
                       </div>
                     </div>

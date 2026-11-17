@@ -72,10 +72,17 @@ app.get(['/api/version', '/version'], (_req, res) => {
 
 // Serve the APK with explicit download headers instead of relying on the
 // frontend static-file handler, which can leave some mobile browsers stuck at 100%.
-app.get('/download/ChatKaro.apk', (_req, res) => {
-  const distApkPath = path.resolve(__dirname, '../../frontend/dist/ChatKaro.apk');
-  const publicApkPath = path.resolve(__dirname, '../../frontend/public/ChatKaro.apk');
-  const apkPath = fs.existsSync(distApkPath) ? distApkPath : (fs.existsSync(publicApkPath) ? publicApkPath : null);
+const serveApk = (filename) => (_req, res) => {
+  const distApkPath = path.resolve(__dirname, `../../frontend/dist/${filename}`);
+  const publicApkPath = path.resolve(__dirname, `../../frontend/public/${filename}`);
+  const fallbackDist = path.resolve(__dirname, '../../frontend/dist/Talksy.apk');
+  const fallbackPublic = path.resolve(__dirname, '../../frontend/public/Talksy.apk');
+  const chatkaroDist = path.resolve(__dirname, '../../frontend/dist/ChatKaro.apk');
+  const chatkaroPublic = path.resolve(__dirname, '../../frontend/public/ChatKaro.apk');
+
+  const apkPath = [distApkPath, publicApkPath, fallbackDist, fallbackPublic, chatkaroDist, chatkaroPublic].find(
+    (p) => fs.existsSync(p)
+  );
 
   if (apkPath) {
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
@@ -83,15 +90,18 @@ app.get('/download/ChatKaro.apk', (_req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    return res.download(apkPath, 'ChatKaro.apk', (err) => {
+    return res.download(apkPath, filename, (err) => {
       if (err && !res.headersSent) {
-        res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/ChatKaro.apk');
+        res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/Talksy.apk');
       }
     });
   }
 
-  res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/ChatKaro.apk');
-});
+  res.redirect(302, 'https://github.com/mirajmiah/ChatKaro/releases/latest/download/Talksy.apk');
+};
+
+app.get('/download/Talksy.apk', serveApk('Talksy.apk'));
+app.get('/download/ChatKaro.apk', serveApk('Talksy.apk'));
 
 // ── Production static serving ─────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
@@ -132,7 +142,7 @@ const PORT = process.env.PORT || 5001;
 
 connectDB().then(() => {
   httpServer.listen(PORT, () => {
-    console.log(`\n🚀 ChatKaro running on http://localhost:${PORT}`);
+    console.log(`\n🚀 Talksy running on http://localhost:${PORT}`);
     console.log(`   Env        : ${process.env.NODE_ENV || 'development'}`);
     console.log(`   Frontend   : ${process.env.FRONTEND_URL || 'http://localhost:5173'}\n`);
     startKeepAlive();

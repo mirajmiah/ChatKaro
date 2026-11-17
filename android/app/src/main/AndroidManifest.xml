@@ -9,7 +9,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="ChatKaro"
+        android:label="Talksy"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
         <activity

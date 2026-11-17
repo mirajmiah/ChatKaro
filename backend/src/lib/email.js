@@ -3,16 +3,16 @@ import { OAuth2Client } from 'google-auth-library';
 const buildMessage = (otp, purpose) => {
   const messages = {
     signup: {
-      subject: 'Verify your ChatKaro email',
-      intro: 'Use this code to verify your ChatKaro account:',
+      subject: 'Verify your Talksy email',
+      intro: 'Use this code to verify your Talksy account:',
     },
     login: {
-      subject: 'ChatKaro sign-in verification code',
-      intro: 'Use this code to sign in to your ChatKaro account:',
+      subject: 'Talksy sign-in verification code',
+      intro: 'Use this code to sign in to your Talksy account:',
     },
     passwordReset: {
-      subject: 'Reset your ChatKaro password',
-      intro: 'Use this code to reset your ChatKaro password:',
+      subject: 'Reset your Talksy password',
+      intro: 'Use this code to reset your Talksy password:',
     },
   };
   const message = messages[purpose];
@@ -45,8 +45,8 @@ const sendWithGmailApi = async ({ to, subject, text, html }) => {
   const accessToken = typeof tokenResult === 'string' ? tokenResult : tokenResult?.token;
   if (!accessToken) throw new Error('Google did not provide an access token for Gmail API.');
 
-  const boundary = `chatkaro_${Date.now().toString(36)}`;
-  const from = (process.env.SMTP_FROM || `ChatKaro <${user}>`).trim();
+  const boundary = `talksy_${Date.now().toString(36)}`;
+  const from = (process.env.SMTP_FROM || `Talksy <${user}>`).trim();
   const mime = [
     `From: ${from}`,
     `To: ${to}`,
@@ -100,7 +100,7 @@ const sendWithBrevo = async ({ to, subject, text, html }) => {
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'ChatKaro', email: senderEmail },
+      sender: { name: 'Talksy', email: senderEmail },
       to: [{ email: to }],
       subject,
       textContent: text,
@@ -121,7 +121,7 @@ const sendWithResend = async ({ to, subject, text, html }) => {
   const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) throw new Error('RESEND_API_KEY is not configured.');
 
-  const from = (process.env.RESEND_FROM || 'ChatKaro <onboarding@resend.dev>').trim();
+  const from = (process.env.RESEND_FROM || 'Talksy <onboarding@resend.dev>').trim();
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {

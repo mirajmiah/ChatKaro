@@ -146,6 +146,7 @@ export const useAuthStore = create((set, get) => ({
     toast.error(translateCurrent(err.response?.data?.message || 'Logout failed'));
   } finally {
     if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('talksy-selected-user-id');
       window.sessionStorage.removeItem('chatkaro-selected-user-id');
     }
     get().disconnectSocket();

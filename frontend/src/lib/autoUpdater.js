@@ -18,10 +18,10 @@ export const triggerAutoRefresh = (incomingCommit) => {
   // If incoming commit doesn't match client's current commit
   if (incomingCommit.slice(0, 7) !== CLIENT_COMMIT.slice(0, 7)) {
     isReloading = true;
-    toast(translateCurrent('ChatKaro updated. Refreshing...'), {
+    toast(translateCurrent('Talksy updated. Refreshing...'), {
       icon: '🔄',
       duration: 3000,
-      id: 'chatkaro-auto-refresh-toast',
+      id: 'talksy-auto-refresh-toast',
     });
 
     setTimeout(() => {

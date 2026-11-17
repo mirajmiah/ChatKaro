@@ -35,7 +35,8 @@ export const useInstallStore = create((set, get) => ({
     }
 
     const dismissed = typeof localStorage !== 'undefined'
-      ? (localStorage.getItem('chatkaro-hide-install-prompt') === 'true' ||
+      ? (localStorage.getItem('talksy-hide-install-prompt') === 'true' ||
+         localStorage.getItem('chatkaro-hide-install-prompt') === 'true' ||
          localStorage.getItem('chatkaro-hide-desktop-prompt') === 'true')
       : false;
 
@@ -63,6 +64,7 @@ export const useInstallStore = create((set, get) => ({
           showTopBanner: false,
           showGuideModal: false,
         });
+        localStorage.removeItem('talksy-hide-install-prompt');
         localStorage.removeItem('chatkaro-hide-install-prompt');
         localStorage.removeItem('chatkaro-hide-desktop-prompt');
       });
@@ -89,7 +91,7 @@ export const useInstallStore = create((set, get) => ({
   dismissTopBanner: (dontAskAgain = false) => {
     set({ showTopBanner: false });
     if (dontAskAgain && typeof localStorage !== 'undefined') {
-      localStorage.setItem('chatkaro-hide-install-prompt', 'true');
+      localStorage.setItem('talksy-hide-install-prompt', 'true');
     }
   },
 

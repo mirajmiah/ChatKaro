@@ -439,7 +439,7 @@ export default function EmojiPicker({ onSelect, onClose }) {
               <span className="text-[10px] capitalize opacity-70 truncate">{hoveredEmoji.keywords.split(' ')[0]}</span>
             </span>
           ) : (
-            <span className="text-[10px] opacity-40">ChatKaro</span>
+            <span className="text-[10px] opacity-40">Talksy</span>
           )}
         </div>
       </div>

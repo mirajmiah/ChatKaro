@@ -217,7 +217,7 @@ export default function ChatWindow() {
           </span>
         </div>
         <div className="max-w-sm">
-          <h2 className="text-xl font-bold text-base-content tracking-tight">{t('Welcome to ChatKaro')}</h2>
+          <h2 className="text-xl font-bold text-base-content tracking-tight">{t('Welcome to Talksy')}</h2>
           <p className="text-sm mt-1 text-base-content/60 leading-relaxed">{t('Pick a contact from the sidebar or search by email to start chatting.')}</p>
         </div>
       </div>

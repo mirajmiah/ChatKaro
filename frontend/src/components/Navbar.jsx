@@ -47,15 +47,20 @@ export default function Navbar() {
     { label: t('App language'), description: t('Choose your preferred language'), icon: Languages, to: '/settings#app-language' },
     { label: t('App theme'), description: t('Customize the app appearance'), icon: Palette, to: '/settings#app-theme' },
     { label: t('How to Use'), description: t('Learn how to find contacts and chat'), icon: BookOpen, to: '/settings#how-to-use' },
-    { label: t('About Developer'), description: t('Learn about the creator of ChatKaro'), icon: Code2, to: '/settings#about-developer' },
+    { label: t('About Developer'), description: t('Learn about the creator of Talksy'), icon: Code2, to: '/settings#about-developer' },
   ];
 
   return (
     <nav className="navbar app-navbar sticky top-0 z-50 border-b border-base-300 bg-base-200 px-3 sm:px-4">
       <div className="flex-1">
-        <Link to="/" className="group flex items-center gap-2" aria-label={t('ChatKaro Home')}>
-          <Logo className="h-8 w-8 transition-transform group-hover:scale-105" />
-          <span className="text-base font-bold tracking-tight sm:text-lg">ChatKaro</span>
+        <Link to="/" className="group inline-flex items-center gap-2.5" aria-label={t('Talksy Home')}>
+          <Logo className="h-8 w-8 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-3deg]" />
+          <div className="flex items-center tracking-tight">
+            <span className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent drop-shadow-sm select-none">
+              Talksy
+            </span>
+            <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-secondary animate-pulse" />
+          </div>
         </Link>
       </div>
 
@@ -81,7 +86,7 @@ export default function Navbar() {
               className="btn btn-ghost btn-square min-h-11 min-w-11"
               aria-label={menuOpen ? t('Close menu') : t('Open menu')}
               aria-expanded={menuOpen}
-              aria-controls="chatkaro-account-menu"
+              aria-controls="talksy-account-menu"
             >
               {menuOpen ? <X size={25} /> : <Menu size={28} strokeWidth={2.5} />}
             </button>
@@ -89,7 +94,7 @@ export default function Navbar() {
             {menuOpen && (
               <>
                 <section
-                  id="chatkaro-account-menu"
+                  id="talksy-account-menu"
                   className="absolute right-0 top-[calc(100%+0.35rem)] z-50 w-[min(17rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border border-base-300 bg-base-100 text-base-content shadow-xl"
                   aria-label={t('Account and app menu')}
                 >

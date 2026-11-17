@@ -19,7 +19,7 @@ const ask = (query) => new Promise((resolve) => rl.question(query, resolve));
 
 async function main() {
   console.log('\n======================================================');
-  console.log('   ChatKaro - Google Gmail API Token Generator');
+  console.log('   Talksy - Google Gmail API Token Generator');
   console.log('======================================================\n');
   console.log('This tool will generate your GMAIL_REFRESH_TOKEN so');
   console.log('Render Free can send emails directly from your Gmail\naccount via Google HTTPS API (bypassing SMTP blocks).\n');

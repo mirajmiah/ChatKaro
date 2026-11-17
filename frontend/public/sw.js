@@ -1,5 +1,5 @@
-// ChatKaro Desktop PWA Service Worker
-const CACHE_NAME = 'chatkaro-desktop-v1';
+// Talksy Desktop & Mobile PWA Service Worker
+const CACHE_NAME = 'talksy-pwa-v1';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

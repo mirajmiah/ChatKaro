@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "ChatKaro",
-  "short_name": "ChatKaro",
-  "description": "ChatKaro — Fast, real-time messaging app",
+  "name": "Talksy",
+  "short_name": "Talksy",
+  "description": "Talksy — Fast, real-time messaging app",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -11,13 +11,13 @@
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "/chatkaro-logo-192.png",
+      "src": "/talksy-logo-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/chatkaro-logo.png",
+      "src": "/talksy-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

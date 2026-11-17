@@ -14,16 +14,16 @@ const GUIDE_LANGUAGES = [
 
 const USAGE_GUIDE = {
   en: {
-    title: 'How to use ChatKaro',
+    title: 'How to use Talksy',
     description: 'Follow these steps to find people and start chatting.',
     steps: [
       {
         title: 'Find someone',
-        description: 'On the Chats page, search using the person’s exact account email, then choose Search contact.',
+        description: 'On the Chats page, search using the person’s unique username in the Discover tab.',
       },
       {
-        title: 'Send a contact request',
-        description: 'Choose Send request. The other person must accept it before you can chat normally.',
+        title: 'Send a connection request',
+        description: 'Choose Connect. The other person must accept it before you can start chatting.',
       },
       {
         title: 'Start a conversation',
@@ -31,7 +31,7 @@ const USAGE_GUIDE = {
       },
       {
         title: 'Review incoming requests',
-        description: 'Accept or decline contact requests in Contact requests. You can preview messages in Message requests before accepting or declining them.',
+        description: 'Accept or decline connection requests in Requests. You can preview details before accepting or declining them.',
       },
     ],
     aboutDeveloperTitle: 'About Developer',
@@ -39,16 +39,16 @@ const USAGE_GUIDE = {
     developerImageAlt: 'Miraj Miah',
   },
   bn: {
-    title: 'ChatKaro কীভাবে ব্যবহার করবেন',
+    title: 'Talksy কীভাবে ব্যবহার করবেন',
     description: 'মানুষ খুঁজে তাদের সঙ্গে চ্যাট শুরু করতে নিচের ধাপগুলো অনুসরণ করুন।',
     steps: [
       {
         title: 'কাউকে খুঁজুন',
-        description: 'Chats পেজে গিয়ে সেই ব্যক্তির অ্যাকাউন্টের সঠিক ইমেইল লিখুন, তারপর Search contact নির্বাচন করুন।',
+        description: 'Discover ট্যাবে গিয়ে ব্যক্তির ইউনিক ইউজারনেম দিয়ে খুঁজুন।',
       },
       {
-        title: 'কন্ট্যাক্ট অনুরোধ পাঠান',
-        description: 'Send request নির্বাচন করুন। সাধারণভাবে চ্যাট করার আগে অন্য ব্যক্তিকে অনুরোধটি গ্রহণ করতে হবে।',
+        title: 'কানেকশন অনুরোধ পাঠান',
+        description: 'Connect নির্বাচন করুন। চ্যাট শুরু করার আগে অন্য ব্যক্তিকে অনুরোধটি গ্রহণ করতে হবে।',
       },
       {
         title: 'কথোপকথন শুরু করুন',
@@ -56,7 +56,7 @@ const USAGE_GUIDE = {
       },
       {
         title: 'আসা অনুরোধগুলো দেখুন',
-        description: 'Contact requests থেকে কন্ট্যাক্ট অনুরোধ গ্রহণ বা প্রত্যাখ্যান করুন। Message requests-এর বার্তা গ্রহণ বা প্রত্যাখ্যান করার আগে দেখে নিতে পারবেন।',
+        description: 'Requests ট্যাব থেকে কানেকশন অনুরোধ গ্রহণ বা প্রত্যাখ্যান করুন।',
       },
     ],
     aboutDeveloperTitle: 'ডেভেলপার সম্পর্কে',
@@ -64,16 +64,16 @@ const USAGE_GUIDE = {
     developerImageAlt: 'মিরাজ মিয়া',
   },
   hi: {
-    title: 'ChatKaro का उपयोग कैसे करें',
+    title: 'Talksy का उपयोग कैसे करें',
     description: 'लोगों को खोजने और उनसे चैट शुरू करने के लिए ये चरण अपनाएँ।',
     steps: [
       {
         title: 'किसी को खोजें',
-        description: 'Chats पेज पर उस व्यक्ति के खाते का सही ईमेल खोजें, फिर Search contact चुनें।',
+        description: 'Discover टैब में उस व्यक्ति के यूनीक यूज़रनेम से खोजें।',
       },
       {
-        title: 'कॉन्टैक्ट अनुरोध भेजें',
-        description: 'Send request चुनें। सामान्य रूप से चैट करने से पहले दूसरे व्यक्ति को अनुरोध स्वीकार करना होगा।',
+        title: 'कनेक्शन अनुरोध भेजें',
+        description: 'Connect चुनें। चैट शुरू करने से पहले दूसरे व्यक्ति को अनुरोध स्वीकार करना होगा।',
       },
       {
         title: 'बातचीत शुरू करें',
@@ -81,7 +81,7 @@ const USAGE_GUIDE = {
       },
       {
         title: 'आने वाले अनुरोध देखें',
-        description: 'Contact requests में कॉन्टैक्ट अनुरोध स्वीकार या अस्वीकार करें। Message requests के संदेश स्वीकार या अस्वीकार करने से पहले देख सकते हैं।',
+        description: 'Requests टैब से कनेक्शन अनुरोध स्वीकार या अस्वीकार करें।',
       },
     ],
     aboutDeveloperTitle: 'डेवलपर के बारे में',
@@ -201,7 +201,7 @@ export default function SettingsPage() {
 
     <h1 className="text-2xl font-bold">{sectionTitle}</h1>
     <p className="text-base-content/60 mt-1">
-      {t('Customize your ChatKaro experience')}
+      {t('Customize your Talksy experience')}
     </p>
   </div>
 </div>

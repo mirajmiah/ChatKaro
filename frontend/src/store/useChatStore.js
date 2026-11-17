@@ -99,7 +99,7 @@ fetchUsers: async () => {
     set((state) => {
       let currentSelected = state.selectedUser;
       if (!currentSelected && typeof window !== 'undefined') {
-        const savedUserId = window.sessionStorage.getItem('chatkaro-selected-user-id');
+        const savedUserId = window.sessionStorage.getItem('talksy-selected-user-id') || window.sessionStorage.getItem('chatkaro-selected-user-id');
         if (savedUserId) {
           currentSelected = users.find((u) => toIdString(u._id) === savedUserId) || null;
         }
@@ -517,8 +517,9 @@ fetchUsers: async () => {
     const targetId = toIdString(user?._id);
     if (typeof window !== 'undefined') {
       if (user) {
-        window.sessionStorage.setItem('chatkaro-selected-user-id', targetId);
+        window.sessionStorage.setItem('talksy-selected-user-id', targetId);
       } else {
+        window.sessionStorage.removeItem('talksy-selected-user-id');
         window.sessionStorage.removeItem('chatkaro-selected-user-id');
       }
     }

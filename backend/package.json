@@ -1,7 +1,7 @@
 {
-  "name": "chatkaro-backend",
+  "name": "talksy-backend",
   "version": "1.0.0",
-  "description": "ChatKaro backend API",
+  "description": "Talksy backend API",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

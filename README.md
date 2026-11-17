@@ -1,4 +1,4 @@
-# ChatKaro
+# Talksy
 
 A production-ready, full-stack real-time chat application built with React 18, Node.js, MongoDB, and Socket.IO.
 
@@ -39,7 +39,7 @@ A production-ready, full-stack real-time chat application built with React 18, N
 ## Project Structure
 
 ```
-ChatKaro/
+Talksy/
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/     # Request handlers

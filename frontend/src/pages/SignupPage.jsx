@@ -211,9 +211,14 @@ export default function SignUpPage() {
   return (
     <main className="auth-page-transition grid min-h-screen min-h-[100dvh] flex-1 bg-white text-[#171717] lg:grid-cols-2">
       <section className="relative flex min-h-[100dvh] flex-col px-6 py-7 sm:px-12 lg:px-16 xl:px-20">
-        <Link to="/" className="flex w-fit items-center gap-2.5 text-[#27202f]" aria-label={t('ChatKaro home')}>
-          <Logo className="h-8 w-8" />
-          <span className="text-lg font-bold tracking-tight">ChatKaro</span>
+        <Link to="/" className="group flex w-fit items-center gap-2.5 text-[#27202f]" aria-label={t('Talksy home')}>
+          <Logo className="h-8 w-8 transition-transform group-hover:scale-110" />
+          <div className="flex items-center tracking-tight">
+            <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent select-none font-sans">
+              Talksy
+            </span>
+            <span className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-pink-500 animate-pulse" />
+          </div>
         </Link>
 
         {verificationStep ? (
@@ -273,7 +278,7 @@ export default function SignUpPage() {
         <div className="mx-auto flex w-full max-w-[390px] flex-1 flex-col justify-center py-10">
           <div className="mb-7">
             <h1 className="text-3xl font-bold tracking-tight text-[#111] sm:text-4xl">{t('Create account')}</h1>
-            <p className="mt-2 text-sm text-gray-500">{t('Join ChatKaro today — it’s free')}</p>
+            <p className="mt-2 text-sm text-gray-500">{t('Join Talksy today — it’s free')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
