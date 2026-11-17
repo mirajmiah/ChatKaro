@@ -18,18 +18,31 @@ export default function UsernameSetupModal() {
   const [initialBase, setInitialBase] = useState('');
   const debounceTimer = useRef(null);
 
-  // Initialize with initial username or Google name/email
+  // Initialize with a clean base candidate from user's name/email
   useEffect(() => {
     if (!authUser) return;
-    const initial = (authUser.username || authUser.fullName || authUser.email || '')
+
+    const cleanFromFullName = (authUser.fullName || '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9._]/g, '')
+      .replace(/^\.+|\.+$/g, '');
+
+    const cleanFromEmail = (authUser.email || '')
       .split('@')[0]
       .toLowerCase()
       .replace(/[^a-z0-9._]/g, '_')
-      .replace(/^\.+|\.+$/g, '')
-      .slice(0, 25);
+      .replace(/^\.+|\.+$/g, '');
+
+    const cleanFromUsername = (authUser.username || '')
+      .toLowerCase()
+      .replace(/[._]\d+$/, '')
+      .replace(/\d+$/, '');
+
+    const initial = (cleanFromFullName || cleanFromEmail || cleanFromUsername || 'user').slice(0, 25);
 
     setUsername(initial);
-    setInitialBase(initial);
     checkAvailability(initial, true);
   }, [authUser?._id]);
 

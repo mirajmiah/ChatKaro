@@ -695,11 +695,37 @@ export const checkUsernameAvailability = async (req, res) => {
     }
 
     const normalized = validation.normalized;
-    const existing = await User.findOne({ username: normalized, emailVerified: true });
+
+    // Check if requester is logged in so we don't flag their own username as taken
+    let currentUserId = req.user?._id;
+    if (!currentUserId && req.cookies && req.cookies[COOKIE_NAME]) {
+      try {
+        const decoded = jwt.verify(req.cookies[COOKIE_NAME], process.env.JWT_SECRET);
+        currentUserId = decoded.userId;
+      } catch {}
+    }
+    if (!currentUserId && req.headers.authorization?.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        currentUserId = decoded.userId;
+      } catch {}
+    }
+
+    const queryFilter = { username: normalized, emailVerified: true };
+    if (currentUserId) {
+      queryFilter._id = { $ne: currentUserId };
+    }
+
+    const existing = await User.findOne(queryFilter);
 
     if (existing) {
       const suggestions = await generateUsernameSuggestions(normalized, async (cand) => {
-        const count = await User.countDocuments({ username: cand, emailVerified: true });
+        const count = await User.countDocuments({
+          username: cand,
+          emailVerified: true,
+          ...(currentUserId ? { _id: { $ne: currentUserId } } : {}),
+        });
         return count > 0;
       });
       return res.status(200).json({
@@ -714,7 +740,11 @@ export const checkUsernameAvailability = async (req, res) => {
     let suggestions = [];
     if (req.query.suggest === 'true') {
       suggestions = await generateUsernameSuggestions(normalized, async (cand) => {
-        const count = await User.countDocuments({ username: cand, emailVerified: true });
+        const count = await User.countDocuments({
+          username: cand,
+          emailVerified: true,
+          ...(currentUserId ? { _id: { $ne: currentUserId } } : {}),
+        });
         return count > 0;
       });
     }

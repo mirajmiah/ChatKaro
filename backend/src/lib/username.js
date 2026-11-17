@@ -64,22 +64,28 @@ export function normalizeUsername(username) {
  * Generates unique alternative username suggestions if the requested one is taken.
  */
 export async function generateUsernameSuggestions(base, isTakenFn) {
-  const rawClean = (base || 'user')
+  const stripped = (base || 'user')
     .toLowerCase()
     .replace(/^@+/, '')
+    .replace(/[._]\d+$/, '') // strip trailing numeric suffix like _830 or .73
+    .replace(/\d+$/, '');
+
+  const rawClean = (stripped || 'user')
     .replace(/[^a-z0-9._]/g, '_')
     .replace(/^\.+|\.+$/g, '')
     .replace(/\.{2,}/g, '.')
-    .slice(0, 20) || 'user';
+    .slice(0, 18) || 'user';
 
+  const currentYear = new Date().getFullYear();
   const candidates = [
-    `${rawClean}_${Math.floor(100 + Math.random() * 900)}`,
+    `${rawClean}_${Math.floor(10 + Math.random() * 90)}`,
     `${rawClean}.${Math.floor(10 + Math.random() * 90)}`,
     `the_${rawClean}`,
     `${rawClean}_chat`,
-    `${rawClean}_${new Date().getFullYear()}`,
+    `${rawClean}_${currentYear}`,
     `${rawClean}${Math.floor(10 + Math.random() * 90)}`,
     `its_${rawClean}`,
+    `${rawClean}.official`,
   ];
 
   const suggestions = [];
